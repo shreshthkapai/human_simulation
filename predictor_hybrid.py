@@ -7,23 +7,25 @@ import numpy as np
 from collections import Counter
 from config import NUM_WALKS, WALK_LENGTH, LEARNING_RATE
 
-
+"""
+Hybrid Predictor: CPU random walks + GPU LLM
+"""
 class GraphPredictorHybrid:
     """
-    CPU-based random walks with GPU LLM processing
-    Avoids CUDA out of memory issues while maintaining speed
+    CPU-based predictor
     """
     
-    def __init__(self, knowledge_graph, num_walks=NUM_WALKS, walk_length=WALK_LENGTH):
+    def __init__(self, knowledge_graph, num_walks=30, walk_length=4):
         self.kg = knowledge_graph
         self.num_walks = num_walks
         self.walk_length = walk_length
+        
         self.surprise_scores = []
         
         print(f"GraphPredictorHybrid initialized (CPU walks, GPU LLM)")
     
     def weighted_random_walk(self, start_node, length):
-        """CPU-based weighted random walk"""
+        """CPU-based random walk"""
         current = start_node
         path = [current]
         
@@ -52,6 +54,8 @@ class GraphPredictorHybrid:
     
     def predict_next_category(self):
         """Predict using CPU random walks"""
+        from collections import Counter
+        
         category_visits = Counter()
         
         for _ in range(self.num_walks):
@@ -73,7 +77,6 @@ class GraphPredictorHybrid:
         return prediction
     
     def calculate_surprise(self, predicted_dist, actual_categories):
-        """Measure surprise using KL divergence"""
         actual_dist = {cat: 0.0 for cat in self.kg.categories}
         
         total_confidence = sum(actual_categories.values())
@@ -99,11 +102,12 @@ class GraphPredictorHybrid:
         
         return kl_div
     
-    def update_graph_weights(self, predicted_dist, actual_categories, learning_rate=LEARNING_RATE):
-        """Update edge weights based on prediction accuracy"""
+    def update_graph_weights(self, predicted_dist, actual_categories, learning_rate=0.15):
+        """Same as before"""
         for cat in self.kg.categories:
             predicted_prob = predicted_dist.get(cat, 0)
             actual_conf = actual_categories.get(cat, 0)
+            
             error = actual_conf - predicted_prob
             
             if self.kg.G.has_edge("USER", cat):
@@ -111,3 +115,5 @@ class GraphPredictorHybrid:
                 adjustment = learning_rate * error
                 new_weight = np.clip(current_weight + adjustment, 0.0, 1.0)
                 self.kg.G["USER"][cat]['weight'] = new_weight
+
+print("Hybrid predictor ready")
