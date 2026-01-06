@@ -1,96 +1,185 @@
 """
-Main Script for Graph-Based Persona Generation
-Orchestrates the entire pipeline from data loading to visualization
+Visualization Tools
+Creates comprehensive analysis plots
 """
-import warnings
-warnings.filterwarnings('ignore')
-
-from utils import load_search_data, prepare_dataframe, print_data_summary
-from training_pipeline import full_production_run, load_checkpoint
-from analysis_tools import (cluster_transitions, detect_sub_personas, 
-                            get_category_connections, generate_narrative)
-from visualization import plot_learning_trajectory, plot_comprehensive_analysis
-from config import FINAL_CHECKPOINT
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+import os
+from scipy.ndimage import uniform_filter1d
+from config import SMOOTHING_WINDOW, FIGURE_DPI, CHECKPOINT_EVERY
 
 
-def main():
-    """Main execution pipeline"""
+def plot_learning_trajectory(predictor, detector, output_file='learning_trajectory.png'):
+    """Plot learning trajectory analysis"""
+    surprise_scores = np.array(predictor.surprise_scores)
+    surprise_smooth = uniform_filter1d(surprise_scores, size=SMOOTHING_WINDOW, mode='nearest')
     
-    print("="*70)
-    print("GRAPH-BASED PERSONA GENERATION FROM SEARCH HISTORY")
-    print("="*70)
-    print()
+    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
     
-    # Step 1: Load and prepare data
-    print("[1/5] Loading search data...")
-    search_data = load_search_data()
-    df = prepare_dataframe(search_data)
-    print_data_summary(search_data, df)
-    print()
+    # Raw surprise over time
+    axes[0, 0].scatter(range(len(surprise_scores)), surprise_scores, alpha=0.1, s=1, color='blue')
+    axes[0, 0].plot(range(len(surprise_smooth)), surprise_smooth, color='red', linewidth=2, label='Rolling avg')
+    axes[0, 0].axhline(y=4, color='orange', linestyle='--', label='Transition threshold')
+    axes[0, 0].set_xlabel('Search Index')
+    axes[0, 0].set_ylabel('Surprise (KL Divergence)')
+    axes[0, 0].set_title('Learning Trajectory: Surprise Over Time')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
     
-    # Step 2: Run training (or resume from checkpoint)
-    print("[2/5] Starting training pipeline...")
-    print("This will process all searches and build the knowledge graph.")
-    print("Progress is automatically saved. Press Ctrl+C to pause safely.")
-    print()
+    # Surprise distribution by period
+    periods = 5
+    period_size = len(surprise_scores) // periods
+    period_surprises = [surprise_scores[i*period_size:(i+1)*period_size] for i in range(periods)]
+    period_labels = [f'{i*20}%-{(i+1)*20}%' for i in range(periods)]
     
-    # Uncomment to resume from checkpoint:
-    # kg, predictor, detector = full_production_run(df, resume_from='checkpoint_X.pkl')
+    axes[0, 1].violinplot(period_surprises, positions=range(periods), showmeans=True)
+    axes[0, 1].set_xticks(range(periods))
+    axes[0, 1].set_xticklabels(period_labels)
+    axes[0, 1].set_xlabel('Progress Through Dataset')
+    axes[0, 1].set_ylabel('Surprise Distribution')
+    axes[0, 1].set_title('Surprise Distribution by Period')
+    axes[0, 1].grid(True, alpha=0.3)
     
-    kg, predictor, detector = full_production_run(df)
-    print()
+    # Cumulative average
+    cumulative_avg = np.cumsum(surprise_scores) / np.arange(1, len(surprise_scores) + 1)
+    axes[1, 0].plot(cumulative_avg, color='green', linewidth=2)
+    axes[1, 0].set_xlabel('Search Index')
+    axes[1, 0].set_ylabel('Cumulative Average Surprise')
+    axes[1, 0].set_title('Model Convergence')
+    axes[1, 0].grid(True, alpha=0.3)
     
-    # Step 3: Load final results and analyze
-    print("[3/5] Analyzing results...")
+    # Transition density
+    transition_indices = [t['search_index'] for t in detector.transitions]
+    bins = 50
+    hist, bin_edges = np.histogram(transition_indices, bins=bins)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     
-    # If you want to load a saved checkpoint instead of training:
-    # kg, predictor, detector, _ = load_checkpoint(FINAL_CHECKPOINT)
+    axes[1, 1].bar(bin_centers, hist, width=(bin_edges[1]-bin_edges[0])*0.8, color='red', alpha=0.7)
+    axes[1, 1].set_xlabel('Search Index')
+    axes[1, 1].set_ylabel('Transition Count')
+    axes[1, 1].set_title('Transition Density Over Time')
+    axes[1, 1].grid(True, alpha=0.3)
     
-    # Cluster transitions into life events
-    transition_clusters = cluster_transitions(detector.transitions)
-    print(f"Clustered {len(detector.transitions)} transitions into {len(transition_clusters)} life events")
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=FIGURE_DPI, bbox_inches='tight')
+    plt.close()
     
-    # Detect sub-personas
-    community_info, communities = detect_sub_personas(kg)
-    print(f"Detected {len(community_info)} sub-persona communities")
-    
-    # Get category connections
-    cat_connections = get_category_connections(kg)
-    print()
-    
-    # Step 4: Generate narrative
-    print("[4/5] Generating user narrative...")
-    narrative = generate_narrative(kg, predictor, detector, transition_clusters, 
-                                   community_info, cat_connections)
-    print(narrative)
-    
-    # Save narrative to file
-    with open('user_narrative.txt', 'w') as f:
-        f.write(narrative)
-    print("Narrative saved to user_narrative.txt")
-    print()
-    
-    # Step 5: Create visualizations
-    print("[5/5] Creating visualizations...")
-    plot_learning_trajectory(predictor, detector)
-    plot_comprehensive_analysis(kg, predictor, detector, transition_clusters, 
-                                community_info, cat_connections)
-    print()
-    
-    print("="*70)
-    print("PIPELINE COMPLETE")
-    print("="*70)
-    print()
-    print("Generated files:")
-    print("  - checkpoint_FINAL.pkl (trained model)")
-    print("  - user_narrative.txt (analysis report)")
-    print("  - learning_trajectory.png (learning plots)")
-    print("  - complete_analysis.png (comprehensive visualization)")
-    print()
-    print("To load saved results for further analysis:")
-    print("  from training_pipeline import load_checkpoint")
-    print("  kg, predictor, detector, _ = load_checkpoint('checkpoint_FINAL.pkl')")
+    print(f"Learning trajectory saved to {output_file}")
 
 
-if __name__ == "__main__":
-    main()
+def plot_comprehensive_analysis(kg, predictor, detector, transition_clusters, community_info, 
+                                cat_connections, output_file='complete_analysis.png'):
+    """Create comprehensive visualization with all analysis"""
+    
+    surprise_scores = np.array(predictor.surprise_scores)
+    surprise_smooth = uniform_filter1d(surprise_scores, size=SMOOTHING_WINDOW, mode='nearest')
+    
+    fig = plt.figure(figsize=(20, 12))
+    gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+    
+    # 1. Learning Trajectory
+    ax1 = fig.add_subplot(gs[0, :])
+    ax1.plot(surprise_smooth, color='#2E86AB', linewidth=2, label='Surprise (rolling avg)')
+    ax1.axhline(y=4.0, color='#A23B72', linestyle='--', linewidth=1.5, label='Transition threshold')
+    ax1.fill_between(range(len(surprise_smooth)), surprise_smooth, alpha=0.3, color='#2E86AB')
+    ax1.set_xlabel('Search Index', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('Surprise (KL Divergence)', fontsize=12, fontweight='bold')
+    ax1.set_title('Model Learning Trajectory', fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=10)
+    ax1.grid(True, alpha=0.3)
+    
+    # 2. Transition Timeline
+    ax2 = fig.add_subplot(gs[1, :])
+    transition_indices = [t['search_index'] for t in detector.transitions]
+    sorted_clusters = sorted(transition_clusters, key=lambda x: len(x['transitions']), reverse=True)
+    
+    for i, cluster in enumerate(sorted_clusters[:5], 1):
+        start_idx = cluster['start_index']
+        end_idx = cluster['end_index']
+        ax2.axvspan(start_idx, end_idx, alpha=0.3, color=f'C{i-1}', 
+                   label=f'Event {i}: {cluster["start_time"].strftime("%b %Y")}')
+    
+    ax2.scatter(transition_indices, [1]*len(transition_indices), alpha=0.3, s=10, color='red')
+    ax2.set_xlabel('Search Index', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Transitions', fontsize=12, fontweight='bold')
+    ax2.set_title('Major Life Events Timeline', fontsize=14, fontweight='bold')
+    ax2.legend(fontsize=8, loc='upper left')
+    ax2.set_ylim(0.5, 1.5)
+    ax2.grid(True, alpha=0.3, axis='x')
+    
+    # 3. Category Distribution
+    ax3 = fig.add_subplot(gs[2, 0])
+    cats = [c for c, _ in cat_connections.most_common()]
+    counts = [c for _, c in cat_connections.most_common()]
+    colors = plt.cm.Set3(np.linspace(0, 1, len(cats)))
+    ax3.barh(cats, counts, color=colors)
+    ax3.set_xlabel('Entity Connections', fontsize=10, fontweight='bold')
+    ax3.set_title('Interest Distribution', fontsize=12, fontweight='bold')
+    ax3.grid(True, alpha=0.3, axis='x')
+    
+    # 4. Sub-Persona Sizes
+    ax4 = fig.add_subplot(gs[2, 1])
+    persona_labels = [f'P{i+1}' for i in range(len(community_info))]
+    persona_sizes = [c['size'] for c in community_info]
+    ax4.bar(persona_labels, persona_sizes, color='#F18F01')
+    ax4.set_xlabel('Sub-Persona', fontsize=10, fontweight='bold')
+    ax4.set_ylabel('Entity Count', fontsize=10, fontweight='bold')
+    ax4.set_title('Sub-Persona Community Sizes', fontsize=12, fontweight='bold')
+    ax4.grid(True, alpha=0.3, axis='y')
+    
+    # 5. Graph Growth from Checkpoints
+    ax5 = fig.add_subplot(gs[2, 2])
+    
+    checkpoint_files = []
+    for i in range(100):
+        filename = f'checkpoint_{i}.pkl'
+        if os.path.exists(filename):
+            checkpoint_files.append((i, filename))
+    
+    if os.path.exists('checkpoint_FINAL.pkl'):
+        max_checkpoint = max([c[0] for c in checkpoint_files]) if checkpoint_files else 0
+        checkpoint_files.append((max_checkpoint + 1, 'checkpoint_FINAL.pkl'))
+    
+    checkpoint_files.sort()
+    
+    searches_processed = []
+    nodes_count = []
+    edges_count = []
+    
+    for checkpoint_num, filename in checkpoint_files:
+        try:
+            with open(filename, 'rb') as f:
+                checkpoint = pickle.load(f)
+            
+            kg_checkpoint = checkpoint['kg']
+            
+            if 'FINAL' in filename:
+                search_idx = len(kg_checkpoint.search_history)
+            else:
+                search_idx = (checkpoint_num + 1) * CHECKPOINT_EVERY
+            
+            searches_processed.append(search_idx)
+            nodes_count.append(kg_checkpoint.G.number_of_nodes())
+            edges_count.append(kg_checkpoint.G.number_of_edges())
+        
+        except Exception:
+            continue
+    
+    if len(searches_processed) > 0:
+        ax5.plot(searches_processed, nodes_count, 'o-', label='Nodes', linewidth=2, markersize=4, color='#06A77D')
+        ax5.plot(searches_processed, edges_count, 's-', label='Edges', linewidth=2, markersize=4, color='#D4AA00')
+        ax5.set_xlabel('Searches Processed', fontsize=10, fontweight='bold')
+        ax5.set_ylabel('Count', fontsize=10, fontweight='bold')
+        ax5.set_title('Knowledge Graph Growth', fontsize=12, fontweight='bold')
+        ax5.legend(fontsize=10)
+        ax5.grid(True, alpha=0.3)
+    
+    timespan = (kg.search_history[-1]['timestamp'] - kg.search_history[0]['timestamp']).days / 365
+    plt.suptitle(f'Longitudinal Behavioral Modeling via Predictive Knowledge Graphs\n{timespan:.1f}-Year Analysis', 
+                 fontsize=16, fontweight='bold', y=0.995)
+    
+    plt.savefig(output_file, dpi=FIGURE_DPI, bbox_inches='tight', facecolor='white')
+    plt.close()
+    
+    print(f"Comprehensive analysis saved to {output_file}")
