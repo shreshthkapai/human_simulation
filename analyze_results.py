@@ -1,6 +1,6 @@
 """
-Standalone Analysis Script
-Load saved checkpoints and perform detailed analysis without retraining
+Standalone Analysis Script - WITH EDGE TYPE ANALYSIS
+Load saved checkpoints and perform detailed analysis including edge typing
 """
 import warnings
 warnings.filterwarnings('ignore')
@@ -9,17 +9,18 @@ from training_pipeline import load_checkpoint
 from analysis_tools import (cluster_transitions, detect_sub_personas, 
                             get_category_connections, generate_narrative)
 from visualization import plot_learning_trajectory, plot_comprehensive_analysis
-from config import FINAL_CHECKPOINT, MAX_GAP_DAYS
+from config import FINAL_CHECKPOINT, MAX_GAP_DAYS, USE_EDGE_TYPES
 import numpy as np
 
 
 def analyze_checkpoint(checkpoint_file=FINAL_CHECKPOINT):
     """
     Load a checkpoint and perform comprehensive analysis
+    NOW WITH EDGE TYPE DETECTION
     """
     
     print("="*70)
-    print("ANALYZING SAVED CHECKPOINT")
+    print("ANALYZING SAVED CHECKPOINT (WITH EDGE TYPES)")
     print("="*70)
     print()
     
@@ -43,9 +44,44 @@ def analyze_checkpoint(checkpoint_file=FINAL_CHECKPOINT):
     print(f"  Transitions detected: {len(detector.transitions):,}")
     print()
     
+    # EDGE TYPE ANALYSIS (NEW!)
+    if USE_EDGE_TYPES and hasattr(predictor, 'edge_type_detector'):
+        print("ANALYZING EDGE TYPES...")
+        print("This analyzes temporal patterns to infer relationship types")
+        print("(This is a one-time analysis, ~2-5 minutes)")
+        print()
+        
+        type_distribution = predictor.analyze_and_tag_edge_types()
+        
+        print("\nEDGE TYPE DISTRIBUTION:")
+        total_edges = sum(type_distribution.values())
+        for edge_type, count in sorted(type_distribution.items(), key=lambda x: x[1], reverse=True):
+            pct = (count / total_edges * 100) if total_edges > 0 else 0
+            print(f"  {edge_type}: {count:,} edges ({pct:.1f}%)")
+        print()
+        
+        # Show examples of each type
+        print("EXAMPLE EDGES BY TYPE:")
+        examples_found = {t: 0 for t in ['causal', 'associative', 'temporal_correlation']}
+        
+        for u, v, data in kg.G.edges(data=True):
+            edge_type = data.get('relationship_type', 'unknown')
+            
+            if edge_type in examples_found and examples_found[edge_type] < 2:
+                u_label = kg.G.nodes[u].get('label', u) if u != 'USER' else u
+                v_label = kg.G.nodes[v].get('label', v) if 'entity' in v else v
+                strength = data.get('type_strength', 0)
+                
+                print(f"  {edge_type}: {u_label} → {v_label} (strength: {strength:.2f})")
+                examples_found[edge_type] += 1
+            
+            if all(count >= 2 for count in examples_found.values()):
+                break
+        print()
+    
     # Transition clustering
     print("CLUSTERING TRANSITIONS...")
-    transition_clusters = cluster_transitions(detector.transitions, max_gap_days=MAX_GAP_DAYS)
+    transition_clusters = cluster_transitions(detector.transitions)
     
     print(f"  Raw transitions: {len(detector.transitions):,}")
     print(f"  Clustered into: {len(transition_clusters):,} life events")
