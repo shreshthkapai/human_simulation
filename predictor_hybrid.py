@@ -1,16 +1,18 @@
 """
-Hybrid Predictor with TRUE bidirectional graph support
-Can now actually traverse in both directions
+Hybrid Predictor with CONTEXT-SENSITIVE ACTIVATION
+No longer always starts from USER - starts from current mental state
 """
 import random
 import numpy as np
 from collections import Counter
+from datetime import datetime, timedelta
 from config import NUM_WALKS, WALK_LENGTH, LEARNING_RATE
 
 
 class GraphPredictorHybrid:
     """
-    CPU-based predictor with TRUE bidirectional traversal
+    CPU-based predictor with CONTEXT-AWARE activation
+    Simulates "what's on my mind right now" before predicting
     """
     
     def __init__(self, knowledge_graph, num_walks=30, walk_length=4):
@@ -20,13 +22,10 @@ class GraphPredictorHybrid:
         
         self.surprise_scores = []
         
-        print(f"GraphPredictorHybrid initialized (CPU walks, TRUE bidirectional)")
+        print(f"GraphPredictorHybrid initialized (Context-Sensitive Activation)")
     
     def weighted_random_walk(self, start_node, length):
-        """
-        CPU-based random walk - now can traverse in ANY direction
-        because all edges exist in both directions!
-        """
+        """CPU-based random walk"""
         current = start_node
         path = [current]
         
@@ -38,7 +37,6 @@ class GraphPredictorHybrid:
             
             weights = []
             for neighbor in neighbors:
-                # Just use weight - the edge direction is already correct
                 edge_data = self.kg.G[current][neighbor]
                 weight = edge_data.get('weight', 0.1)
                 weights.append(max(weight, 0.01))
@@ -54,20 +52,117 @@ class GraphPredictorHybrid:
         
         return path
     
-    def predict_next_category(self):
+    def get_context_nodes(self, current_timestamp=None, num_context_nodes=3):
         """
-        Predict using CPU random walks
-        Now naturally follows whatever edges exist (including reverse!)
+        NEW: Determine which nodes are currently "activated" in mind
+        Context = recent activity + temporal priming + transition state
         """
-        category_visits = Counter()
+        context_nodes = ["USER"]  # Always include USER as base
         
-        for _ in range(self.num_walks):
-            path = self.weighted_random_walk("USER", self.walk_length)
+        if not self.kg.search_history or len(self.kg.search_history) < 10:
+            return context_nodes
+        
+        # 1. RECENT ACTIVATION: Entities from last N searches
+        recent_searches = self.kg.search_history[-5:]
+        recent_entities = []
+        for search in recent_searches:
+            for entity in search.get('entities', []):
+                entity_id = f"entity_{entity.lower().replace(' ', '_')}"
+                if entity_id in self.kg.G:
+                    # Weight by recency
+                    mention_count = self.kg.G.nodes[entity_id].get('mention_count', 1)
+                    score = 1.0 + np.log1p(mention_count)
+                    recent_entities.append((entity_id, score))
+        
+        # Sort by score and take top
+        recent_entities.sort(key=lambda x: x[1], reverse=True)
+        for entity_id, _ in recent_entities[:2]:
+            if entity_id not in context_nodes:
+                context_nodes.append(entity_id)
+        
+        # 2. TEMPORAL PRIMING: What's typical for this time?
+        if current_timestamp:
+            hour = current_timestamp.hour
+            day_of_week = current_timestamp.weekday()
             
-            for node in path:
-                node_data = self.kg.G.nodes.get(node, {})
-                if node_data.get('node_type') == 'category':
-                    category_visits[node] += 1
+            # Find entities/categories active at similar times historically
+            temporal_matches = []
+            for search in self.kg.search_history[-1000:]:  # Look at last 1000
+                search_time = search.get('timestamp')
+                if search_time:
+                    # Same hour of day (±2 hours)
+                    if abs(search_time.hour - hour) <= 2:
+                        for entity in search.get('entities', []):
+                            entity_id = f"entity_{entity.lower().replace(' ', '_')}"
+                            if entity_id in self.kg.G:
+                                temporal_matches.append(entity_id)
+                    
+                    # Same day of week
+                    if search_time.weekday() == day_of_week:
+                        for entity in search.get('entities', []):
+                            entity_id = f"entity_{entity.lower().replace(' ', '_')}"
+                            if entity_id in self.kg.G:
+                                temporal_matches.append(entity_id)
+            
+            # Count frequency
+            if temporal_matches:
+                temporal_freq = Counter(temporal_matches)
+                top_temporal = temporal_freq.most_common(1)
+                if top_temporal and top_temporal[0][0] not in context_nodes:
+                    context_nodes.append(top_temporal[0][0])
+        
+        # 3. TRANSITION STATE: If in transition, emphasize recent over stable
+        if len(self.surprise_scores) > 25:
+            recent_surprise = np.mean(self.surprise_scores[-25:])
+            baseline_surprise = np.mean(self.surprise_scores[:-25])
+            
+            if recent_surprise > baseline_surprise * 1.3:
+                # In transition - weight recent more heavily
+                # Add most recent category
+                if recent_searches:
+                    last_categories = recent_searches[-1].get('categories', {})
+                    if last_categories:
+                        top_cat = max(last_categories.items(), key=lambda x: x[1])[0]
+                        if top_cat not in context_nodes:
+                            context_nodes.append(top_cat)
+        
+        # Limit total context nodes to avoid dilution
+        return context_nodes[:num_context_nodes + 1]  # +1 for USER
+    
+    def predict_next_category(self, current_timestamp=None, use_context=True):
+        """
+        Predict using context-sensitive activation
+        NOW: Starts walks from MULTIPLE context nodes, not just USER
+        """
+        if not use_context:
+            # Legacy mode: just start from USER
+            category_visits = Counter()
+            for _ in range(self.num_walks):
+                path = self.weighted_random_walk("USER", self.walk_length)
+                for node in path:
+                    node_data = self.kg.G.nodes.get(node, {})
+                    if node_data.get('node_type') == 'category':
+                        category_visits[node] += 1
+        else:
+            # CONTEXT-SENSITIVE MODE
+            context_nodes = self.get_context_nodes(current_timestamp)
+            
+            # Distribute walks across context nodes
+            walks_per_node = self.num_walks // len(context_nodes)
+            remaining_walks = self.num_walks % len(context_nodes)
+            
+            category_visits = Counter()
+            
+            for i, start_node in enumerate(context_nodes):
+                num_walks = walks_per_node + (1 if i < remaining_walks else 0)
+                
+                for _ in range(num_walks):
+                    path = self.weighted_random_walk(start_node, self.walk_length)
+                    
+                    for node in path:
+                        node_data = self.kg.G.nodes.get(node, {})
+                        if node_data.get('node_type') == 'category':
+                            category_visits[node] += 1
         
         total_visits = sum(category_visits.values())
         
@@ -81,7 +176,7 @@ class GraphPredictorHybrid:
     
     def predict_from_context(self, start_nodes, num_walks_per_node=10):
         """
-        NEW: Predict starting from multiple context nodes
+        ENHANCED: Explicit context-based prediction
         Useful for simulation: "given I'm thinking about X, Y, Z..."
         """
         category_visits = Counter()
@@ -109,11 +204,7 @@ class GraphPredictorHybrid:
         return prediction
     
     def explain_why(self, target_node, num_walks=30):
-        """
-        NEW: Backward reasoning - "Why am I thinking about this?"
-        Walks backward from target to find causes
-        """
-        # Get nodes that point TO target (reverse edges that actually exist!)
+        """Backward reasoning - "Why am I thinking about this?" """
         incoming_nodes = list(self.kg.G.predecessors(target_node))
         
         if not incoming_nodes:
@@ -122,7 +213,6 @@ class GraphPredictorHybrid:
         cause_visits = Counter()
         
         for _ in range(num_walks):
-            # Start from target, walk backward
             path = self.weighted_random_walk(target_node, self.walk_length)
             
             for node in path:
@@ -132,7 +222,6 @@ class GraphPredictorHybrid:
                 if node_type in ['category', 'entity']:
                     cause_visits[node] += 1
         
-        # Return top causes
         total = sum(cause_visits.values())
         if total == 0:
             return {}
@@ -167,29 +256,24 @@ class GraphPredictorHybrid:
         return kl_div
     
     def update_graph_weights(self, predicted_dist, actual_categories, learning_rate=LEARNING_RATE):
-        """
-        Update edge weights based on prediction accuracy
-        Updates USER → category edges
-        """
+        """Update edge weights based on prediction accuracy"""
         for cat in self.kg.categories:
             predicted_prob = predicted_dist.get(cat, 0)
             actual_conf = actual_categories.get(cat, 0)
             
             error = actual_conf - predicted_prob
             
-            # Update forward edge (USER → category)
             if self.kg.G.has_edge("USER", cat):
                 current = self.kg.G["USER"][cat]['weight']
                 adjustment = learning_rate * error
                 new_weight = np.clip(current + adjustment, 0.0, 1.0)
                 self.kg.G["USER"][cat]['weight'] = new_weight
             
-            # Update backward edge (category → USER) more conservatively
             if self.kg.G.has_edge(cat, "USER"):
                 current = self.kg.G[cat]["USER"]['weight']
-                adjustment = learning_rate * error * 0.3  # Weaker backward update
+                adjustment = learning_rate * error * 0.3
                 new_weight = np.clip(current + adjustment, 0.0, 1.0)
                 self.kg.G[cat]["USER"]['weight'] = new_weight
 
 
-print("Hybrid predictor ready (TRUE bidirectional)")
+print("Hybrid predictor ready (Context-Sensitive)")

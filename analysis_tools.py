@@ -1,21 +1,83 @@
 """
-Analysis Tools for Post-Processing
+Analysis Tools for Post-Processing - WITH ADAPTIVE THRESHOLDS
 Transition clustering, sub-persona detection, and narrative generation
+No more magic numbers for clustering!
 """
 import numpy as np
 import networkx as nx
 from datetime import timedelta
 from collections import Counter, defaultdict
 from networkx.algorithms import community
-from config import MAX_GAP_DAYS, MIN_CLUSTER_SIZE, TOP_N_ENTITIES
+from config import MAX_GAP_DAYS_MULTIPLIER, MIN_CLUSTER_SIZE_SIGMA, TOP_N_ENTITIES
 
 
-def cluster_transitions(transitions, max_gap_days=MAX_GAP_DAYS):
+def calculate_adaptive_max_gap(transitions):
+    """
+    Calculate max gap from transition timing statistics
+    No more magic number - derived from data!
+    """
+    if len(transitions) < 2:
+        return 14  # Fallback for insufficient data
+    
+    # Calculate gaps between consecutive transitions
+    sorted_trans = sorted(transitions, key=lambda x: x['timestamp'])
+    gaps = []
+    for i in range(len(sorted_trans) - 1):
+        gap = (sorted_trans[i+1]['timestamp'] - sorted_trans[i]['timestamp']).days
+        gaps.append(gap)
+    
+    if not gaps:
+        return 14
+    
+    # Adaptive threshold: mean + multiplier * std
+    mean_gap = np.mean(gaps)
+    std_gap = np.std(gaps)
+    
+    max_gap = mean_gap + MAX_GAP_DAYS_MULTIPLIER * std_gap
+    
+    # Reasonable bounds
+    max_gap = max(3, min(max_gap, 60))  # Between 3 and 60 days
+    
+    return int(max_gap)
+
+
+def calculate_adaptive_min_size(clusters):
+    """
+    Calculate minimum cluster size from cluster distribution
+    No more magic number - derived from data!
+    """
+    if not clusters:
+        return 3
+    
+    cluster_sizes = [len(c['transitions']) for c in clusters]
+    
+    if len(cluster_sizes) < 3:
+        return 3
+    
+    # Adaptive threshold: mean - sigma * std (smaller clusters filtered)
+    mean_size = np.mean(cluster_sizes)
+    std_size = np.std(cluster_sizes)
+    
+    min_size = mean_size - MIN_CLUSTER_SIZE_SIGMA * std_size
+    
+    # Reasonable bounds
+    min_size = max(2, min(min_size, mean_size))
+    
+    return int(min_size)
+
+
+def cluster_transitions(transitions, max_gap_days=None):
     """
     Group transitions that are close in time into periods
+    NOW WITH ADAPTIVE max_gap_days derived from data!
     """
     if not transitions:
         return []
+    
+    # Calculate adaptive max_gap if not provided
+    if max_gap_days is None:
+        max_gap_days = calculate_adaptive_max_gap(transitions)
+        print(f"    [ADAPTIVE] Calculated max_gap_days = {max_gap_days} from transition timing")
     
     sorted_trans = sorted(transitions, key=lambda x: x['timestamp'])
     
@@ -47,13 +109,22 @@ def cluster_transitions(transitions, max_gap_days=MAX_GAP_DAYS):
     
     clusters.append(current_cluster)
     
-    return clusters
+    # Filter by adaptive minimum size
+    min_size = calculate_adaptive_min_size(clusters)
+    print(f"    [ADAPTIVE] Calculated min_cluster_size = {min_size} from cluster distribution")
+    
+    significant_clusters = [c for c in clusters if len(c['transitions']) >= min_size]
+    
+    print(f"    [ADAPTIVE] Filtered {len(clusters)} clusters → {len(significant_clusters)} significant clusters")
+    
+    return significant_clusters
 
 
 def detect_sub_personas(kg):
     """
     Find communities/clusters in the knowledge graph
     Returns community information
+    (This one doesn't need adaptive thresholds - uses modularity optimization)
     """
     # Remove USER and category nodes
     G_entities = kg.G.copy()
@@ -69,12 +140,21 @@ def detect_sub_personas(kg):
     # Find communities
     communities = community.greedy_modularity_communities(G_undirected, weight='weight')
     
+    # Calculate adaptive minimum community size
+    if len(communities) > 0:
+        community_sizes = [len(c) for c in communities]
+        mean_size = np.mean(community_sizes)
+        std_size = np.std(community_sizes)
+        min_community_size = max(3, int(mean_size - 0.5 * std_size))
+    else:
+        min_community_size = 3
+    
     community_info = []
     
     for i, comm in enumerate(sorted(communities, key=len, reverse=True)[:10], 1):
         entities = list(comm)
         
-        if len(entities) < MIN_CLUSTER_SIZE:
+        if len(entities) < min_community_size:
             continue
         
         total_mentions = sum(kg.G.nodes[e].get('mention_count', 0) for e in entities if e in kg.G)
@@ -117,11 +197,15 @@ def get_category_connections(kg):
 def generate_narrative(kg, predictor, detector, transition_clusters, community_info, cat_connections):
     """
     Generate user identity narrative from analysis
+    NOW REPORTS ADAPTIVE THRESHOLDS USED
     """
     timespan_years = (kg.search_history[-1]['timestamp'] - kg.search_history[0]['timestamp']).days / 365
     first_1k_surprise = np.mean(predictor.surprise_scores[:1000])
     last_1k_surprise = np.mean(predictor.surprise_scores[-1000:])
     improvement_pct = (first_1k_surprise - last_1k_surprise) / first_1k_surprise * 100
+    
+    # Get adaptive threshold used
+    adaptive_threshold = detector.get_current_threshold(predictor.surprise_scores)
     
     narrative = []
     narrative.append("\n" + "="*70)
@@ -135,6 +219,16 @@ def generate_narrative(kg, predictor, detector, transition_clusters, community_i
     narrative.append(f"Identified {len(transition_clusters)} distinct life events")
     narrative.append(f"Found {len(community_info)} behavioral sub-personas")
     narrative.append(f"Model learning: {improvement_pct:.1f}% surprise reduction over time")
+    narrative.append("")
+    
+    narrative.append("ADAPTIVE PARAMETERS USED:")
+    narrative.append(f"Surprise threshold: {adaptive_threshold:.3f} (mean + {detector.surprise_sigma}σ)")
+    narrative.append(f"Transition window: {detector.window_size} searches")
+    if transition_clusters:
+        max_gap = calculate_adaptive_max_gap(detector.transitions)
+        min_size = calculate_adaptive_min_size(transition_clusters)
+        narrative.append(f"Max cluster gap: {max_gap} days (adaptive)")
+        narrative.append(f"Min cluster size: {min_size} transitions (adaptive)")
     narrative.append("")
     
     narrative.append("LIFE TRAJECTORY:")

@@ -1,6 +1,6 @@
 """
-Production Training Pipeline with Checkpointing
-Processes all searches and builds the knowledge graph
+Production Training Pipeline - WITH CONTEXT-SENSITIVE PREDICTION
+Now passes timestamp to predictor for context-aware predictions
 """
 import pickle
 import os
@@ -47,9 +47,11 @@ def load_checkpoint(filename):
     return data['kg'], data['predictor'], data['detector'], data['last_processed_idx']
 
 
-def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_EVERY, batch_size=BATCH_SIZE):
+def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_EVERY, 
+                       batch_size=BATCH_SIZE, use_context=True):
     """
-    Process all searches with checkpointing and resume capability
+    Process all searches with CONTEXT-SENSITIVE prediction
+    NEW: use_context parameter enables context-aware activation
     """
     
     if resume_from and os.path.exists(resume_from):
@@ -65,13 +67,14 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
     total_searches = len(df_clean)
     
     print("\n" + "="*70)
-    print("FULL PRODUCTION RUN")
+    print("FULL PRODUCTION RUN - CONTEXT-SENSITIVE MODE")
     print("="*70)
     print(f"Total searches: {total_searches:,}")
     print(f"Starting from: {start_idx:,}")
     print(f"Remaining: {total_searches - start_idx:,}")
     print(f"Batch size: {batch_size}")
     print(f"Checkpoint every: {checkpoint_every} searches")
+    print(f"Context-aware: {use_context}")
     print(f"Estimated time: {(total_searches - start_idx) * 2.5 / 3600:.1f} hours")
     print("="*70 + "\n")
     
@@ -90,7 +93,12 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
             query = row['query']
             timestamp = row['timestamp']
             
-            predicted_dist = predictor.predict_next_category()
+            # CONTEXT-SENSITIVE PREDICTION
+            # Pass timestamp so predictor can use temporal context
+            predicted_dist = predictor.predict_next_category(
+                current_timestamp=timestamp if use_context else None,
+                use_context=use_context
+            )
             
             batch_buffer.append(query)
             batch_data_buffer.append({
