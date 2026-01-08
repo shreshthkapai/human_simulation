@@ -1,6 +1,5 @@
 """
-Production Training Pipeline - WITH CONTEXT-SENSITIVE PREDICTION
-Now passes timestamp to predictor for context-aware predictions
+Production Training Pipeline - Context-Sensitive with Temporal Decay
 """
 import pickle
 import os
@@ -10,11 +9,11 @@ from knowledge_graph import UserKnowledgeGraph
 from predictor_hybrid import GraphPredictorHybrid
 from transition_detector import TransitionDetector
 from llm_client import query_llm_batch, parse_batch_response
-from config import CATEGORIES, CHECKPOINT_EVERY, BATCH_SIZE, LEARNING_RATE
+from config import (CATEGORIES, CHECKPOINT_EVERY, BATCH_SIZE, LEARNING_RATE,
+                   ENTITY_EDGE_DECAY_RATE, APPLY_DECAY_EVERY)
 
 
 def save_checkpoint(kg, predictor, detector, checkpoint_num, last_processed_idx):
-    """Save current state to disk"""
     checkpoint_data = {
         'kg': kg,
         'predictor': predictor,
@@ -34,7 +33,6 @@ def save_checkpoint(kg, predictor, detector, checkpoint_num, last_processed_idx)
 
 
 def load_checkpoint(filename):
-    """Load checkpoint from disk"""
     if not os.path.exists(filename):
         return None, None, None, 0
     
@@ -49,10 +47,6 @@ def load_checkpoint(filename):
 
 def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_EVERY, 
                        batch_size=BATCH_SIZE, use_context=True):
-    """
-    Process all searches with CONTEXT-SENSITIVE prediction
-    NEW: use_context parameter enables context-aware activation
-    """
     
     if resume_from and os.path.exists(resume_from):
         kg, predictor, detector, start_idx = load_checkpoint(resume_from)
@@ -67,7 +61,7 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
     total_searches = len(df_clean)
     
     print("\n" + "="*70)
-    print("FULL PRODUCTION RUN - CONTEXT-SENSITIVE MODE")
+    print("FULL PRODUCTION RUN - CONTEXT-SENSITIVE + TEMPORAL DECAY")
     print("="*70)
     print(f"Total searches: {total_searches:,}")
     print(f"Starting from: {start_idx:,}")
@@ -75,6 +69,7 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
     print(f"Batch size: {batch_size}")
     print(f"Checkpoint every: {checkpoint_every} searches")
     print(f"Context-aware: {use_context}")
+    print(f"Decay rate: {ENTITY_EDGE_DECAY_RATE} (apply every {APPLY_DECAY_EVERY})")
     print(f"Estimated time: {(total_searches - start_idx) * 2.5 / 3600:.1f} hours")
     print("="*70 + "\n")
     
@@ -93,8 +88,6 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
             query = row['query']
             timestamp = row['timestamp']
             
-            # CONTEXT-SENSITIVE PREDICTION
-            # Pass timestamp so predictor can use temporal context
             predicted_dist = predictor.predict_next_category(
                 current_timestamp=timestamp if use_context else None,
                 use_context=use_context
@@ -145,6 +138,9 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                 batch_buffer = []
                 batch_data_buffer = []
                 
+                if processed % APPLY_DECAY_EVERY == 0 and processed > 0:
+                    predictor.apply_temporal_decay(timestamp, decay_rate=ENTITY_EDGE_DECAY_RATE)
+                
                 if processed % 500 == 0 and processed > 0:
                     elapsed = time.time() - start_time
                     rate = processed / elapsed
@@ -168,7 +164,6 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                     print(f"    [STATS] Last {checkpoint_every} searches: {checkpoint_elapsed/60:.1f} min ({checkpoint_rate:.2f} searches/sec)")
                     last_checkpoint_time = time.time()
         
-        # Process final batch
         if batch_buffer:
             response = query_llm_batch(batch_buffer)
             if response:
@@ -200,12 +195,6 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
         print("Progress saved. Resume with the saved checkpoint file.")
         print("="*70)
         return kg, predictor, detector
-    
-    except Exception as e:
-        print(f"\n\n[ERROR] {e}")
-        print("Saving emergency checkpoint...")
-        save_checkpoint(kg, predictor, detector, f"error_{checkpoint_num}", idx)
-        raise
     
     final_filename = save_checkpoint(kg, predictor, detector, 'FINAL', total_searches - 1)
     

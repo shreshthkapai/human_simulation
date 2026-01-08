@@ -38,7 +38,11 @@ EDGE_TYPE_SIMULTANEOUS_WINDOW_HOURS = 1
 EDGE_TYPE_MIN_SAMPLES = 3
 
 # Competition
-COMPETITION_STRENGTH = 0.05  # How much to weaken competitors (0.01-0.1 recommended)
+COMPETITION_STRENGTH = 0.05
+
+# Temporal decay
+ENTITY_EDGE_DECAY_RATE = 0.0005  
+APPLY_DECAY_EVERY = 100          
 
 # Confidence
 CONFIDENCE_NUM_TRIALS = 10

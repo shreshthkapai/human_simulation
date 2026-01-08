@@ -1,5 +1,5 @@
 """
-GPU Predictor - All Features
+GPU Predictor - Complete with All Features
 """
 import torch
 import numpy as np
@@ -24,28 +24,13 @@ class GraphPredictorGPU:
         
         self.surprise_scores = []
         
-        if self.use_coherence:
-            self.coherence_calc = CoherenceCalculator(knowledge_graph)
-        else:
-            self.coherence_calc = None
+        self.coherence_calc = CoherenceCalculator(knowledge_graph) if use_coherence else None
+        self.edge_type_detector = EdgeTypeDetector(knowledge_graph) if use_edge_types else None
+        self.competition_manager = CompetitionManager(knowledge_graph) if use_competition else None
         
-        if self.use_edge_types:
-            self.edge_type_detector = EdgeTypeDetector(knowledge_graph)
-        else:
-            self.edge_type_detector = None
-        
-        if self.use_competition:
-            self.competition_manager = CompetitionManager(knowledge_graph)
-        else:
-            self.competition_manager = None
-        
-        features = []
-        if self.use_coherence: features.append("Coherence")
-        if self.use_edge_types: features.append("Edge Types")
-        if self.use_competition: features.append("Competition")
-        
-        feature_str = " + ".join(features) if features else "Basic"
-        print(f"GraphPredictorGPU on {self.device} ({feature_str})")
+        features = [f for f, enabled in [("Coherence", use_coherence), 
+                    ("Edge Types", use_edge_types), ("Competition", use_competition)] if enabled]
+        print(f"GraphPredictorGPU on {self.device} ({' + '.join(features) if features else 'Basic'})")
     
     def graph_to_adjacency_tensor(self, reasoning_mode='forward'):
         nodes = list(self.kg.G.nodes())
@@ -55,25 +40,17 @@ class GraphPredictorGPU:
         adj = torch.zeros((n, n), device=self.device)
         
         for u, v, data in self.kg.G.edges(data=True):
-            u_idx = node_to_idx[u]
-            v_idx = node_to_idx[v]
             weight = data.get('weight', 0.1)
             
             if self.use_edge_types and self.edge_type_detector:
                 edge_type = data.get('relationship_type', 'unknown')
-                type_multiplier = self.edge_type_detector.get_edge_type_weight_multiplier(
-                    edge_type, reasoning_mode
-                )
-                weight *= type_multiplier
+                weight *= self.edge_type_detector.get_edge_type_weight_multiplier(edge_type, reasoning_mode)
             
-            adj[u_idx, v_idx] = max(weight, 0.01)
+            adj[node_to_idx[u], node_to_idx[v]] = max(weight, 0.01)
         
         row_sums = adj.sum(dim=1, keepdim=True)
-        zero_rows = (row_sums.squeeze() == 0)
-        adj[zero_rows, :] = 1.0 / n
-        
-        row_sums = adj.sum(dim=1, keepdim=True)
-        adj = adj / row_sums
+        adj[row_sums.squeeze() == 0] = 1.0 / n
+        adj = adj / adj.sum(dim=1, keepdim=True)
         
         return adj, nodes, node_to_idx
     
@@ -81,10 +58,11 @@ class GraphPredictorGPU:
         n = adj.shape[0]
         paths = torch.zeros((num_walks, walk_length + 1), dtype=torch.long, device=self.device)
         paths[:, 0] = start_idx
+        path_coherence_scores = torch.zeros((num_walks, walk_length), device=self.device)
         
         for step in range(walk_length):
             current = paths[:, step]
-            probs = adj[current]
+            probs = adj[current].clone()
             
             if self.use_coherence and self.coherence_calc and step > 0:
                 previous = paths[:, step - 1]
@@ -93,21 +71,18 @@ class GraphPredictorGPU:
                     curr_node = nodes[current[walk_idx].item()]
                     prev_node = nodes[previous[walk_idx].item()]
                     
-                    neighbors = list(self.kg.G.neighbors(curr_node))
-                    
-                    for neighbor in neighbors:
+                    for neighbor in self.kg.G.neighbors(curr_node):
                         neighbor_idx = nodes.index(neighbor) if neighbor in nodes else -1
                         if neighbor_idx >= 0:
                             coherence = self.coherence_calc.get_coherence(prev_node, neighbor)
                             probs[walk_idx, neighbor_idx] *= (1.0 + coherence)
+                            path_coherence_scores[walk_idx, step] = coherence
             
             probs = torch.clamp(probs, min=1e-10)
             probs = probs / probs.sum(dim=1, keepdim=True)
-            
-            next_nodes = torch.multinomial(probs, 1).squeeze(1)
-            paths[:, step + 1] = next_nodes
+            paths[:, step + 1] = torch.multinomial(probs, 1).squeeze(1)
         
-        return paths
+        return paths, path_coherence_scores.mean(dim=1)
     
     def random_walks_gpu(self, start_idx, adj, num_walks, walk_length):
         n = adj.shape[0]
@@ -116,231 +91,231 @@ class GraphPredictorGPU:
         
         for step in range(walk_length):
             current = paths[:, step]
-            probs = adj[current]
-            
-            probs = torch.clamp(probs, min=1e-10)
+            probs = torch.clamp(adj[current], min=1e-10)
             probs = probs / probs.sum(dim=1, keepdim=True)
-            
-            next_nodes = torch.multinomial(probs, 1).squeeze(1)
-            paths[:, step + 1] = next_nodes
+            paths[:, step + 1] = torch.multinomial(probs, 1).squeeze(1)
         
-        return paths
+        return paths, torch.ones(num_walks, device=self.device) * 0.5
     
     def get_context_nodes(self, current_timestamp=None, num_context_nodes=3):
         context_nodes = ["USER"]
         if not self.kg.search_history or len(self.kg.search_history) < 10:
             return context_nodes
         
-        recent_searches = self.kg.search_history[-5:]
         recent_entities = []
-        for search in recent_searches:
+        for search in self.kg.search_history[-5:]:
             for entity in search.get('entities', []):
                 entity_id = f"entity_{entity.lower().replace(' ', '_')}"
                 if entity_id in self.kg.G:
-                    mention_count = self.kg.G.nodes[entity_id].get('mention_count', 1)
-                    score = 1.0 + np.log1p(mention_count)
+                    score = 1.0 + np.log1p(self.kg.G.nodes[entity_id].get('mention_count', 1))
                     recent_entities.append((entity_id, score))
         
         recent_entities.sort(key=lambda x: x[1], reverse=True)
-        for entity_id, _ in recent_entities[:2]:
-            if entity_id not in context_nodes:
-                context_nodes.append(entity_id)
+        context_nodes.extend([e for e, _ in recent_entities[:2] if e not in context_nodes])
         
         if current_timestamp:
             hour = current_timestamp.hour
             temporal_matches = []
             for search in self.kg.search_history[-1000:]:
-                search_time = search.get('timestamp')
-                if search_time and abs(search_time.hour - hour) <= 2:
+                if search.get('timestamp') and abs(search['timestamp'].hour - hour) <= 2:
                     for entity in search.get('entities', []):
                         entity_id = f"entity_{entity.lower().replace(' ', '_')}"
                         if entity_id in self.kg.G:
                             temporal_matches.append(entity_id)
             
             if temporal_matches:
-                temporal_freq = Counter(temporal_matches)
-                top_temporal = temporal_freq.most_common(1)
-                if top_temporal and top_temporal[0][0] not in context_nodes:
-                    context_nodes.append(top_temporal[0][0])
+                top_temporal = Counter(temporal_matches).most_common(1)[0][0]
+                if top_temporal not in context_nodes:
+                    context_nodes.append(top_temporal)
         
         if len(self.surprise_scores) > 25:
             recent_surprise = np.mean(self.surprise_scores[-25:])
             baseline_surprise = np.mean(self.surprise_scores[:-25])
             
-            if recent_surprise > baseline_surprise * 1.3:
-                if recent_searches:
-                    last_categories = recent_searches[-1].get('categories', {})
-                    if last_categories:
-                        top_cat = max(last_categories.items(), key=lambda x: x[1])[0]
-                        if top_cat not in context_nodes:
-                            context_nodes.append(top_cat)
+            if recent_surprise > baseline_surprise * 1.3 and self.kg.search_history:
+                last_categories = self.kg.search_history[-1].get('categories', {})
+                if last_categories:
+                    top_cat = max(last_categories.items(), key=lambda x: x[1])[0]
+                    if top_cat not in context_nodes:
+                        context_nodes.append(top_cat)
         
         return context_nodes[:num_context_nodes + 1]
     
     def predict_next_category(self, current_timestamp=None, use_context=True, reasoning_mode='forward'):
         adj, nodes, node_to_idx = self.graph_to_adjacency_tensor(reasoning_mode)
+        category_visits = {cat: 0.0 for cat in self.kg.categories}
         
         if not use_context:
             if "USER" not in node_to_idx:
                 return {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
             
-            user_idx = node_to_idx["USER"]
+            paths, qualities = (self.random_walks_gpu_with_coherence if self.use_coherence 
+                               else self.random_walks_gpu)(node_to_idx["USER"], adj, nodes, 
+                                                          self.num_walks, self.walk_length)
             
-            if self.use_coherence:
-                paths = self.random_walks_gpu_with_coherence(user_idx, adj, nodes, 
-                                                            self.num_walks, self.walk_length)
-            else:
-                paths = self.random_walks_gpu(user_idx, adj, self.num_walks, self.walk_length)
-            
-            category_visits = {cat: 0 for cat in self.kg.categories}
-            
-            paths_cpu = paths.cpu().numpy()
-            for path in paths_cpu:
+            for path, quality in zip(paths.cpu().numpy(), qualities.cpu().numpy()):
                 for node_idx in path:
                     node = nodes[node_idx]
                     if self.kg.G.nodes.get(node, {}).get('node_type') == 'category':
-                        category_visits[node] += 1
+                        category_visits[node] += (1.0 + quality)
         else:
             context_nodes = self.get_context_nodes(current_timestamp)
-            
             walks_per_node = self.num_walks // len(context_nodes)
-            remaining_walks = self.num_walks % len(context_nodes)
-            
-            category_visits = {cat: 0 for cat in self.kg.categories}
             
             for i, start_node in enumerate(context_nodes):
                 if start_node not in node_to_idx:
                     continue
                 
-                num_walks = walks_per_node + (1 if i < remaining_walks else 0)
-                start_idx = node_to_idx[start_node]
+                num_walks = walks_per_node + (1 if i < self.num_walks % len(context_nodes) else 0)
+                paths, qualities = (self.random_walks_gpu_with_coherence if self.use_coherence 
+                                   else self.random_walks_gpu)(node_to_idx[start_node], adj, nodes,
+                                                              num_walks, self.walk_length)
                 
-                if self.use_coherence:
-                    paths = self.random_walks_gpu_with_coherence(start_idx, adj, nodes,
-                                                                num_walks, self.walk_length)
-                else:
-                    paths = self.random_walks_gpu(start_idx, adj, num_walks, self.walk_length)
-                
-                paths_cpu = paths.cpu().numpy()
-                for path in paths_cpu:
+                for path, quality in zip(paths.cpu().numpy(), qualities.cpu().numpy()):
                     for node_idx in path:
                         node = nodes[node_idx]
                         if self.kg.G.nodes.get(node, {}).get('node_type') == 'category':
-                            category_visits[node] += 1
+                            category_visits[node] += (1.0 + quality)
         
         total_visits = sum(category_visits.values())
-        if total_visits == 0:
-            return {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
-        
-        return {cat: category_visits[cat] / total_visits for cat in self.kg.categories}
+        return {cat: category_visits[cat] / total_visits for cat in self.kg.categories} if total_visits > 0 else {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
     
     def calculate_surprise(self, predicted_dist, actual_categories):
         actual_dist = {cat: 0.0 for cat in self.kg.categories}
-        
         total_confidence = sum(actual_categories.values())
+        
         if total_confidence > 0:
             for cat, conf in actual_categories.items():
                 if cat in actual_dist:
                     actual_dist[cat] = conf / total_confidence
         else:
-            for cat in actual_dist:
-                actual_dist[cat] = 1.0 / len(self.kg.categories)
+            actual_dist = {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
         
         epsilon = 1e-10
-        predicted_array = np.array([predicted_dist.get(cat, epsilon) + epsilon 
-                                    for cat in self.kg.categories])
-        actual_array = np.array([actual_dist.get(cat, epsilon) + epsilon 
-                                for cat in self.kg.categories])
+        predicted_array = np.array([predicted_dist.get(cat, epsilon) + epsilon for cat in self.kg.categories])
+        actual_array = np.array([actual_dist.get(cat, epsilon) + epsilon for cat in self.kg.categories])
         
-        predicted_array = predicted_array / predicted_array.sum()
-        actual_array = actual_array / actual_array.sum()
+        predicted_array /= predicted_array.sum()
+        actual_array /= actual_array.sum()
         
-        kl_div = np.sum(actual_array * np.log(actual_array / predicted_array))
-        return kl_div
+        return np.sum(actual_array * np.log(actual_array / predicted_array))
     
     def update_graph_weights(self, predicted_dist, actual_categories, learning_rate=LEARNING_RATE):
-        """Update with competitive learning"""
         for cat in self.kg.categories:
-            predicted_prob = predicted_dist.get(cat, 0)
-            actual_conf = actual_categories.get(cat, 0)
-            error = actual_conf - predicted_prob
+            error = actual_categories.get(cat, 0) - predicted_dist.get(cat, 0)
             
             if self.kg.G.has_edge("USER", cat):
                 current = self.kg.G["USER"][cat]['weight']
-                adjustment = learning_rate * error
-                new_weight = np.clip(current + adjustment, 0.0, 1.0)
+                new_weight = np.clip(current + learning_rate * error, 0.0, 1.0)
                 self.kg.G["USER"][cat]['weight'] = new_weight
                 
-                if adjustment > 0 and self.use_competition and self.competition_manager:
+                if error > 0 and self.use_competition and self.competition_manager:
                     self.competition_manager.apply_competition(cat, learning_rate)
             
             if self.kg.G.has_edge(cat, "USER"):
                 current = self.kg.G[cat]["USER"]['weight']
-                adjustment = learning_rate * error * 0.3
-                new_weight = np.clip(current + adjustment, 0.0, 1.0)
-                self.kg.G[cat]["USER"]['weight'] = new_weight
+                self.kg.G[cat]["USER"]['weight'] = np.clip(current + learning_rate * error * 0.3, 0.0, 1.0)
     
     def predict_from_context(self, start_nodes, num_walks_per_node=10, reasoning_mode='forward'):
-        """Context-based prediction"""
         adj, nodes, node_to_idx = self.graph_to_adjacency_tensor(reasoning_mode)
-        
-        category_visits = {cat: 0 for cat in self.kg.categories}
+        category_visits = {cat: 0.0 for cat in self.kg.categories}
         
         for start_node in start_nodes:
             if start_node not in node_to_idx:
                 continue
             
-            start_idx = node_to_idx[start_node]
+            paths, qualities = (self.random_walks_gpu_with_coherence if self.use_coherence 
+                               else self.random_walks_gpu)(node_to_idx[start_node], adj, nodes,
+                                                          num_walks_per_node, self.walk_length)
             
-            if self.use_coherence:
-                paths = self.random_walks_gpu_with_coherence(start_idx, adj, nodes,
-                                                            num_walks_per_node, self.walk_length)
-            else:
-                paths = self.random_walks_gpu(start_idx, adj, num_walks_per_node, self.walk_length)
-            
-            paths_cpu = paths.cpu().numpy()
-            for path in paths_cpu:
+            for path, quality in zip(paths.cpu().numpy(), qualities.cpu().numpy()):
                 for node_idx in path:
                     node = nodes[node_idx]
                     if self.kg.G.nodes.get(node, {}).get('node_type') == 'category':
-                        category_visits[node] += 1
+                        category_visits[node] += (1.0 + quality)
         
         total_visits = sum(category_visits.values())
-        if total_visits == 0:
-            return {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
-        
-        return {cat: category_visits[cat] / total_visits for cat in self.kg.categories}
+        return {cat: category_visits[cat] / total_visits for cat in self.kg.categories} if total_visits > 0 else {cat: 1.0/len(self.kg.categories) for cat in self.kg.categories}
     
     def explain_why(self, target_node, num_walks=30):
-        """Backward reasoning"""
         adj, nodes, node_to_idx = self.graph_to_adjacency_tensor('backward')
         
         if target_node not in node_to_idx:
             return {}
         
-        target_idx = node_to_idx[target_node]
-        
-        if self.use_coherence:
-            paths = self.random_walks_gpu_with_coherence(target_idx, adj, nodes,
-                                                        num_walks, self.walk_length)
-        else:
-            paths = self.random_walks_gpu(target_idx, adj, num_walks, self.walk_length)
+        paths, qualities = (self.random_walks_gpu_with_coherence if self.use_coherence 
+                           else self.random_walks_gpu)(node_to_idx[target_node], adj, nodes,
+                                                      num_walks, self.walk_length)
         
         cause_visits = {}
-        
-        paths_cpu = paths.cpu().numpy()
-        for path in paths_cpu:
+        for path, quality in zip(paths.cpu().numpy(), qualities.cpu().numpy()):
             for node_idx in path:
                 node = nodes[node_idx]
                 if self.kg.G.nodes.get(node, {}).get('node_type') in ['category', 'entity']:
-                    cause_visits[node] = cause_visits.get(node, 0) + 1
+                    cause_visits[node] = cause_visits.get(node, 0.0) + (1.0 + quality)
         
         total = sum(cause_visits.values())
         if total == 0:
             return {}
         
-        sorted_causes = sorted(cause_visits.items(), key=lambda x: x[1], reverse=True)[:10]
-        return {node: count/total for node, count in sorted_causes}
+        return {node: count/total for node, count in sorted(cause_visits.items(), key=lambda x: x[1], reverse=True)[:10]}
+    
+    def rebuild_coherence_metadata(self):
+        if self.coherence_calc:
+            self.coherence_calc.rebuild_metadata()
+    
+    def rebuild_competition_matrix(self):
+        if self.competition_manager:
+            self.competition_manager.rebuild_competition_matrix()
+    
+    def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
+        edges_to_remove = []
+        
+        for u, v, data in self.kg.G.edges(data=True):
+            if data.get('edge_type') != 'co_occurs':
+                continue
+            
+            last_updated = data.get('last_updated')
+            if not last_updated:
+                continue
+            
+            days_since = (current_timestamp - last_updated).days
+            decay_factor = np.exp(-decay_rate * days_since)
+            
+            new_weight = data['weight'] * decay_factor
+            
+            if new_weight < 0.05:
+                edges_to_remove.append((u, v))
+            else:
+                data['weight'] = max(new_weight, 0.01)
+        
+        for u, v in edges_to_remove:
+            self.kg.G.remove_edge(u, v)
+    
+    def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
+        """Decay entity-entity co-occurrence edges over time"""
+        edges_to_remove = []
+        
+        for u, v, data in self.kg.G.edges(data=True):
+            if data.get('edge_type') != 'co_occurs':
+                continue
+            
+            last_updated = data.get('last_updated')
+            if not last_updated:
+                continue
+            
+            days_since = (current_timestamp - last_updated).days
+            decay_factor = np.exp(-decay_rate * days_since)
+            
+            new_weight = data['weight'] * decay_factor
+            
+            if new_weight < 0.05:
+                edges_to_remove.append((u, v))
+            else:
+                data['weight'] = max(new_weight, 0.01)
+        
+        for u, v in edges_to_remove:
+            self.kg.G.remove_edge(u, v)
     
     def analyze_and_tag_edge_types(self):
         if self.edge_type_detector:
