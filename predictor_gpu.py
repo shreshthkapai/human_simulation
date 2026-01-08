@@ -269,30 +269,6 @@ class GraphPredictorGPU:
             self.competition_manager.rebuild_competition_matrix()
     
     def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
-        edges_to_remove = []
-        
-        for u, v, data in self.kg.G.edges(data=True):
-            if data.get('edge_type') != 'co_occurs':
-                continue
-            
-            last_updated = data.get('last_updated')
-            if not last_updated:
-                continue
-            
-            days_since = (current_timestamp - last_updated).days
-            decay_factor = np.exp(-decay_rate * days_since)
-            
-            new_weight = data['weight'] * decay_factor
-            
-            if new_weight < 0.05:
-                edges_to_remove.append((u, v))
-            else:
-                data['weight'] = max(new_weight, 0.01)
-        
-        for u, v in edges_to_remove:
-            self.kg.G.remove_edge(u, v)
-    
-    def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
         """Decay entity-entity co-occurrence edges over time"""
         edges_to_remove = []
         
