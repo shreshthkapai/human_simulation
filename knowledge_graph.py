@@ -57,28 +57,32 @@ class UserKnowledgeGraph:
                 if self.G.has_edge(entity_A_id, entity_B_id):
                     current = self.G[entity_A_id][entity_B_id]['weight']
                     self.G[entity_A_id][entity_B_id]['weight'] = min(current + 0.1, 1.0)
+                    self.G[entity_A_id][entity_B_id]['last_updated'] = timestamp  
                 else:
                     self.G.add_edge(entity_A_id, entity_B_id, 
                                    weight=0.3, 
                                    edge_type='co_occurs',
-                                   created=timestamp)
+                                   created=timestamp,
+                                   last_updated=timestamp)  
                 
                 if self.G.has_edge(entity_B_id, entity_A_id):
                     current = self.G[entity_B_id][entity_A_id]['weight']
                     self.G[entity_B_id][entity_A_id]['weight'] = min(current + 0.1, 1.0)
-                else:
+                    self.G[entity_B_id][entity_A_id]['last_updated'] = timestamp  
                     self.G.add_edge(entity_B_id, entity_A_id,
                                    weight=0.3,
                                    edge_type='co_occurs',
-                                   created=timestamp)
+                                   created=timestamp,
+                                   last_updated=timestamp)  
     
     def add_search_event(self, timestamp, query, entities, categories, attributes):
         event = {
-            'timestamp': timestamp,
-            'query': query,
-            'entities': entities,
-            'categories': categories,
-            'attributes': attributes
+        'timestamp': timestamp,
+        'query': query,
+        'entities': entities,
+        'entity_ids': [f"entity_{e.lower().replace(' ', '_')}" for e in entities],  # ✅ ADD THIS LINE
+        'categories': categories,
+        'attributes': attributes
         }
         self.search_history.append(event)
         
