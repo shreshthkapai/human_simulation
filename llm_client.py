@@ -31,53 +31,32 @@ def query_llm_batch(queries, max_retries=MAX_RETRIES):
     # Build category descriptions
     cat_descriptions = "\n".join([f"- {cat}: {desc}" for cat, desc in CATEGORY_DEFINITIONS.items()])
     
-    prompt = f"""Analyze these search queries and score them against categories.
+    prompt = f"""Analyze these {len(queries)} search queries. 
+Return a JSON array of objects with "entities" (list), "categories" (object with scores 0.3-1.0), and "attributes" (object).
 
 CATEGORIES:
 {cat_descriptions}
 
-SCORING FORMULA:
-For each query, calculate category scores (0.0 to 1.0) as:
-score = 0.5 × keyword_match + 0.3 × entity_evidence + 0.2 × semantic_fit
+SCORING: score = 0.5*keyword + 0.3*entity + 0.2*semantic
 
-Where:
-- keyword_match: Does query contain category-related terms? (1.0 if yes, 0.0 if no)
-- entity_evidence: Do extracted entities belong to this category? (average fit)
-- semantic_fit: Does overall query intent match this category?
-
-EXAMPLES:
-Query: "best hotels in paris"
-  Entities: ["Paris", "hotels"]
-  Travel: keyword=0.0, entity=0.9, semantic=1.0 → score=0.77
-  Location: keyword=0.0, entity=0.7, semantic=0.6 → score=0.51
-
-Query: "iphone 15 pro review"
-  Entities: ["iPhone 15 Pro"]
-  Technology: keyword=0.0, entity=1.0, semantic=1.0 → score=0.80
-
-RULES:
-- Extract specific entities (names, products, places)
-- Only include categories with score > 0.3
-- Scores should reflect generic understanding (not personalized)
-
-Queries to analyze:
+QUERIES:
 {queries_text}
 
-Return EXACTLY {len(queries)} JSON objects in array format:
+OUTPUT FORMAT:
 [
-  {{"entities": ["e1","e2"], "categories": {{"Category": 0.8}}, "attributes": {{}}}},
+  {{"entities": ["name"], "categories": {{"Category": 0.8}}, "attributes": {{}}}},
   ...
 ]
-
-Return only valid JSON array, no explanation."""
+Return ONLY the JSON array. No explanation."""
     
     payload = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
+        "format": "json", # Forces Ollama JSON mode
         "options": {
-            "temperature": 0.2,
-            "num_predict": 300
+            "temperature": 0.1,
+            "num_predict": 500
         }
     }
     
