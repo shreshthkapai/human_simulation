@@ -32,22 +32,26 @@ def query_llm_batch(queries, max_retries=MAX_RETRIES):
     cat_descriptions = "\n".join([f"- {cat}: {desc}" for cat, desc in CATEGORY_DEFINITIONS.items()])
     
     prompt = f"""Analyze these {len(queries)} search queries. 
-Return a JSON array of objects with "entities" (list), "categories" (object with scores 0.3-1.0), and "attributes" (object).
+Return a JSON array of objects with "entities", "categories", and "attributes".
+
+ENTITY EXTRACTION RULES:
+- Extract specific proper nouns, locations, brands, products, or distinct objects.
+- DO NOT return generic category names (e.g., use ["London", "Gloucester"], NOT ["location"]).
+- If no specific entities exist, return an empty list [].
 
 CATEGORIES:
 {cat_descriptions}
 
-SCORING: score = 0.5*keyword + 0.3*entity + 0.2*semantic
+SCORING: score = 0.5*keyword + 0.3*entity + 0.2*semantic (Range: 0.3-1.0)
 
 QUERIES:
 {queries_text}
 
-OUTPUT FORMAT:
+OUTPUT FORMAT (Return ONLY the JSON array, no explanation):
 [
-  {{"entities": ["name"], "categories": {{"Category": 0.8}}, "attributes": {{}}}},
+  {{"entities": ["Specific Entity"], "categories": {{"CategoryName": 0.8}}, "attributes": {{"key": "value"}}}},
   ...
-]
-Return ONLY the JSON array. No explanation."""
+]"""
     
     payload = {
         "model": MODEL,
