@@ -52,8 +52,7 @@ class CoherenceCalculator:
                         if node in search.get('categories', {}):
                             appears = True
                     elif node_type == 'entity':
-                        node_label = node_data.get('label', '')
-                        if node_label in search.get('entities', []):
+                        if node in search.get('entity_ids', []):  
                             appears = True
                     
                     if appears:
