@@ -21,34 +21,41 @@ CATEGORY_DEFINITIONS = {
 }
 
 
-def query_llm_batch(queries, max_retries=2):
+def query_llm_batch(queries, max_retries=MAX_RETRIES):
     """
-    Uses your original prompt style but with JSON mode for stability.
+    Process multiple queries with formula-guided scoring
+    LLM outputs generic scores (same for all users)
     """
     queries_text = "\n".join([f"{i+1}. \"{q}\"" for i, q in enumerate(queries)])
     
-    # Your original prompt logic
-    prompt = f"""Analyze these search queries. Return EXACTLY {len(queries)} JSON objects in an array.
+    # Build category descriptions
+    cat_descriptions = "\n".join([f"- {cat}: {desc}" for cat, desc in CATEGORY_DEFINITIONS.items()])
+    
+    prompt = f"""Analyze these {len(queries)} search queries. 
+Return a JSON array of objects with "entities" (list), "categories" (object with scores 0.3-1.0), and "attributes" (object).
 
-CRITICAL: EVERY object MUST have all three fields: entities, categories, attributes.
-Never skip any field. If uncertain, assign lower confidence values.
+CATEGORIES:
+{cat_descriptions}
 
-Queries:
+SCORING: score = 0.5*keyword + 0.3*entity + 0.2*semantic
+
+QUERIES:
 {queries_text}
 
-Return ONLY this exact format (no explanation):
+OUTPUT FORMAT:
 [
-  {{"entities": ["e1","e2"], "categories": {{"Category": 0.8}}, "attributes": {{"key": "val"}}}},
+  {{"entities": ["name"], "categories": {{"Category": 0.8}}, "attributes": {{}}}},
   ...
-]"""
-
+]
+Return ONLY the JSON array. No explanation."""
+    
     payload = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
-        "format": "json",  # <--- This is the key fix for the hanging
+        "format": "json", # Forces Ollama JSON mode
         "options": {
-            "temperature": 0.3, # A bit of creativity helps with entity extraction
+            "temperature": 0.1,
             "num_predict": 500
         }
     }
@@ -61,7 +68,7 @@ Return ONLY this exact format (no explanation):
             return result.get('response', '')
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(2)
+                time.sleep(1)
             else:
                 return None
     return None
