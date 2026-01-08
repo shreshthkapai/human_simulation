@@ -115,7 +115,7 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                                 skipped += 1
                                 continue
                             
-                            # PREDICT FIRST (before graph sees this search)
+                            # PREDICT FIRST 
                             predicted_dist = predictor.predict_next_category(
                                 current_timestamp=data['timestamp'],
                                 use_context=True
