@@ -148,7 +148,7 @@ def analyze_checkpoint(checkpoint_file=FINAL_CHECKPOINT):
     narrative = generate_narrative(kg, predictor, detector, transition_clusters, 
                                    community_info, cat_connections)
     
-    with open('user_narrative.txt', 'w') as f:
+    with open('user_narrative.txt', 'w', encoding='utf-8') as f:
         f.write(narrative)
     print("  Saved to user_narrative.txt")
     print()

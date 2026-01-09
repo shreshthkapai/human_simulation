@@ -245,7 +245,8 @@ class GraphPredictorHybrid:
         edges_to_remove = []
         
         for u, v, data in self.kg.G.edges(data=True):
-            if data.get('edge_type') != 'co_occurs':
+            # Skip definitions (Entity -> Category) - Facts are eternal
+            if data.get('edge_type') == 'belongs_to':
                 continue
             
             last_updated = data.get('last_updated')

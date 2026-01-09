@@ -3,6 +3,9 @@ Main Script for Graph-Based Persona Generation
 Orchestrates the entire pipeline from data loading to visualization
 """
 import warnings
+import os
+import glob
+import re
 warnings.filterwarnings('ignore')
 
 from utils import load_search_data, prepare_dataframe, print_data_summary
@@ -30,21 +33,44 @@ def main():
     
     # Step 2: Run training (or resume from checkpoint)
     print("[2/5] Starting training pipeline...")
-    print("This will process all searches and build the knowledge graph.")
     print("Progress is automatically saved. Press Ctrl+C to pause safely.")
-    print()
     
-    # Uncomment to resume from checkpoint:
-    # kg, predictor, detector = full_production_run(df, resume_from='checkpoint_X.pkl')
+    # Auto-resume logic: find the latest checkpoint file
+    checkpoint_files = glob.glob("checkpoint_*.pkl")
+    # Exclude 'FINAL' or 'interrupt' strings to find numeric ones, or just take the most recent modified
+    latest_checkpoint = None
+    if checkpoint_files:
+        # Sort by number if possible, else by modification time
+        try:
+            # Extract numbers and pick highest
+            nums = []
+            for f in checkpoint_files:
+                match = re.search(r'checkpoint_(\d+).pkl', f)
+                if match:
+                    nums.append((int(match.group(1)), f))
+            if nums:
+                latest_checkpoint = max(nums, key=lambda x: x[0])[1]
+            else:
+                # Fallback to modification time
+                latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
+        except:
+            latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
+            
+    if latest_checkpoint:
+        print(f"  [AUTO-RESUME] Found existing checkpoint: {latest_checkpoint}")
+        try:
+            kg, predictor, detector = full_production_run(df, resume_from=latest_checkpoint)
+        except Exception as e:
+            print(f"  [ERROR] Failed to load checkpoint {latest_checkpoint}: {e}")
+            print("  Starting fresh run instead...")
+            kg, predictor, detector = full_production_run(df)
+    else:
+        kg, predictor, detector = full_production_run(df)
     
-    kg, predictor, detector = full_production_run(df)
     print()
     
     # Step 3: Load final results and analyze
     print("[3/5] Analyzing results...")
-    
-    # If you want to load a saved checkpoint instead of training:
-    # kg, predictor, detector, _ = load_checkpoint(FINAL_CHECKPOINT)
     
     # Cluster transitions into life events
     transition_clusters = cluster_transitions(detector.transitions)
@@ -65,7 +91,7 @@ def main():
     print(narrative)
     
     # Save narrative to file
-    with open('user_narrative.txt', 'w') as f:
+    with open('user_narrative.txt', 'w', encoding='utf-8') as f:
         f.write(narrative)
     print("Narrative saved to user_narrative.txt")
     print()
@@ -89,7 +115,7 @@ def main():
     print()
     print("To load saved results for further analysis:")
     print("  from training_pipeline import load_checkpoint")
-    print("  kg, predictor, detector, _ = load_checkpoint('checkpoint_FINAL.pkl')")
+    print("  kg, predictor, detector, start_idx, num = load_checkpoint('checkpoint_FINAL.pkl')")
 
 
 if __name__ == "__main__":
