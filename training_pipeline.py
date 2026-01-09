@@ -260,9 +260,10 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                 # 4. ✅ FIX: Coherence Metadata Rebuild (every 1000 items)
                 should_rebuild, rebuild_count = should_trigger('coherence', processed, last_coherence_rebuild, 1000)
                 if should_rebuild and processed > 0:
-                    print(f"  [COHERENCE] Rebuilding metadata (graph has grown)...")
-                    predictor.rebuild_coherence_metadata()
-                    last_coherence_rebuild = processed
+                    print(f"  [COHERENCE] Updating metadata incrementally...")
+                    if predictor.coherence_calc:
+                        predictor.coherence_calc.incremental_update()
+                    last_coherence_rebuild = processed  
                 
                 # 5. Checkpoints (every CHECKPOINT_EVERY)
                 should_checkpoint, checkpoint_count = should_trigger('checkpoint', processed, last_checkpoint_trigger, checkpoint_every)
