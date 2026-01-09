@@ -114,6 +114,7 @@ def validate_and_clean_item(item):
     
     # Must have at least one valid category
     if not cleaned_categories:
+        print(f"REJECTED: No valid categories found in {item.get('categories')}")
         return None
     
     # Extract attributes (optional, default to empty dict)
@@ -129,37 +130,30 @@ def validate_and_clean_item(item):
 
 
 def parse_batch_response(response, num_queries):
-    """
-    Parse batch JSON response from LLM.
-    Returns list of raw items (validation happens per-item in training loop).
-    """
-    data = None
-    
-    # Try direct JSON parse
+    """Parse batch JSON response from LLM"""
     try:
         data = json.loads(response)
+        if isinstance(data, list) and len(data) == num_queries:
+            return data
     except:
         pass
     
-    # Try extracting from markdown code blocks
-    if data is None:
-        try:
-            if "```json" in response:
-                json_str = response.split("```json")[1].split("```")[0].strip()
-            elif "```" in response:
-                json_str = response.split("```")[1].split("```")[0].strip()
-            elif "[" in response and "]" in response:
-                start = response.find("[")
-                end = response.rfind("]") + 1
-                json_str = response[start:end]
-            else:
-                json_str = response.strip()
-            data = json.loads(json_str)
-        except:
-            pass
-    
-    # Return list if valid, None otherwise
-    if isinstance(data, list):
-        return data
+    try:
+        if "```json" in response:
+            json_str = response.split("```json")[1].split("```")[0].strip()
+        elif "```" in response:
+            json_str = response.split("```")[1].split("```")[0].strip()
+        elif "[" in response and "]" in response:
+            start = response.find("[")
+            end = response.rfind("]") + 1
+            json_str = response[start:end]
+        else:
+            json_str = response.strip()
+        
+        data = json.loads(json_str)
+        if isinstance(data, list):
+            return data
+    except:
+        pass
     
     return None
