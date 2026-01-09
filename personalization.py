@@ -92,4 +92,4 @@ def calculate_blend_weight(graph_size):
     elif graph_size < 2000:
         return 0.2 + (graph_size - 500) / 1500 * 0.3
     else:
-        return 0.5
+        return 0.6
