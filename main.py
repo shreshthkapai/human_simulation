@@ -37,29 +37,32 @@ def main():
     
     # Auto-resume logic: find the latest checkpoint file
     checkpoint_files = glob.glob("checkpoint_*.pkl")
-    # Exclude 'FINAL' or 'interrupt' strings to find numeric ones, or just take the most recent modified
+    # Exclude 'FINAL' or 'interrupt' strings to find numeric ones
     latest_checkpoint = None
+    latest_checkpoint_num = -1
+    
     if checkpoint_files:
-        # Sort by number if possible, else by modification time
-        try:
-            # Extract numbers and pick highest
-            nums = []
-            for f in checkpoint_files:
-                match = re.search(r'checkpoint_(\d+).pkl', f)
-                if match:
-                    nums.append((int(match.group(1)), f))
-            if nums:
-                latest_checkpoint = max(nums, key=lambda x: x[0])[1]
-            else:
-                # Fallback to modification time
-                latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
-        except:
-            latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
+        # Extract numbers and pick highest
+        for f in checkpoint_files:
+            match = re.search(r'checkpoint_(\d+).pkl', f)
+            if match:
+                num = int(match.group(1))
+                if num > latest_checkpoint_num:
+                    latest_checkpoint_num = num
+                    latest_checkpoint = f
             
     if latest_checkpoint:
         print(f"  [AUTO-RESUME] Found existing checkpoint: {latest_checkpoint}")
         try:
-            kg, predictor, detector = full_production_run(df, resume_from=latest_checkpoint)
+            # ✅ FIX: Capture all 5 return values including checkpoint_num
+            kg, predictor, detector, last_idx, checkpoint_num = load_checkpoint(latest_checkpoint)
+            
+            # ✅ FIX: Pass checkpoint_num to full_production_run
+            kg, predictor, detector = full_production_run(
+                df, 
+                resume_from=latest_checkpoint,
+                start_checkpoint_num=checkpoint_num  # Pass it through!
+            )
         except Exception as e:
             print(f"  [ERROR] Failed to load checkpoint {latest_checkpoint}: {e}")
             print("  Starting fresh run instead...")

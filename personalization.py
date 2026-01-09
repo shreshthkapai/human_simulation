@@ -1,6 +1,8 @@
 """
 Personalization Module - Phase 2 of Two-Phase System
 Adjusts generic LLM scores using user's graph
+
+✅ FIX: Smooth sigmoid blend weight instead of step function
 """
 import numpy as np
 
@@ -81,7 +83,37 @@ def personalize_scores(llm_scores, entities, kg, blend_weight=0.5):
 
 def calculate_blend_weight(graph_size):
     """
+    ✅ FIX: Smooth sigmoid blend weight instead of step function
+    
     Calculate how much to trust graph vs LLM based on training progress
+    Uses sigmoid for smooth transition:
+    
+    Early training (< 500): ~0.2 (trust LLM 80%)
+    Mid training (500-2000): smooth ramp
+    Late training (> 2000): ~0.6 (trust graph 60%)
+    
+    Formula: blend_weight = 0.2 + 0.4 * sigmoid((size - 1250) / 400)
+    """
+    # Sigmoid parameters
+    midpoint = 1250  # Inflection point (halfway between 500 and 2000)
+    steepness = 400  # Controls smoothness (higher = smoother)
+    
+    # Sigmoid function: 1 / (1 + e^(-x))
+    x = (graph_size - midpoint) / steepness
+    sigmoid_value = 1.0 / (1.0 + np.exp(-x))
+    
+    # Map sigmoid [0, 1] to blend_weight [0.2, 0.6]
+    min_blend = 0.2  # Early training
+    max_blend = 0.6  # Late training
+    blend_weight = min_blend + (max_blend - min_blend) * sigmoid_value
+    
+    return blend_weight
+
+
+# Legacy version kept for comparison
+def calculate_blend_weight_legacy(graph_size):
+    """
+    OLD STEP FUNCTION VERSION (kept for reference)
     
     Early training (< 500 searches): Trust LLM more (0.2)
     Mid training (500-2000): Gradually increase (0.2 → 0.5)
