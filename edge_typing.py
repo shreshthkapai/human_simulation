@@ -5,6 +5,9 @@ Automatically tags edges as causal, associative, or temporal based on timing
 import numpy as np
 from collections import defaultdict
 from datetime import timedelta
+from config import (EDGE_TYPE_CAUSAL_WINDOW_HOURS, 
+                    EDGE_TYPE_SIMULTANEOUS_WINDOW_HOURS, 
+                    EDGE_TYPE_MIN_SAMPLES)
 
 
 class EdgeTypeDetector:
@@ -16,9 +19,9 @@ class EdgeTypeDetector:
     """
     
     def __init__(self, knowledge_graph, 
-                 causal_window_hours=24,      # A before B within 24 hours = causal
-                 simultaneous_window_hours=1, # Within 1 hour = simultaneous
-                 min_samples=3):              # Need 3+ observations to infer type
+                 causal_window_hours=EDGE_TYPE_CAUSAL_WINDOW_HOURS,
+                 simultaneous_window_hours=EDGE_TYPE_SIMULTANEOUS_WINDOW_HOURS,
+                 min_samples=EDGE_TYPE_MIN_SAMPLES):
         
         self.kg = knowledge_graph
         self.causal_window = timedelta(hours=causal_window_hours)

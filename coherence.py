@@ -5,6 +5,9 @@ Calculates coherence between nodes to prefer logical reasoning paths
 import numpy as np
 from collections import defaultdict
 from datetime import datetime
+from config import (COHERENCE_SHARED_CATEGORIES_WEIGHT, 
+                    COHERENCE_CO_OCCURRENCE_WEIGHT, 
+                    COHERENCE_TEMPORAL_WEIGHT)
 
 
 class CoherenceCalculator:
@@ -157,11 +160,11 @@ class CoherenceCalculator:
         co_occurrence = self.calculate_co_occurrence(node_A, node_B)
         temporal = self.calculate_temporal_overlap(node_A, node_B)
         
-        # Weighted combination
+        # Weighted combination (from config)
         coherence = (
-            shared_cats * 0.4 +      # 40% weight on shared categories
-            co_occurrence * 0.4 +    # 40% weight on co-occurrence
-            temporal * 0.2           # 20% weight on temporal overlap
+            shared_cats * COHERENCE_SHARED_CATEGORIES_WEIGHT +
+            co_occurrence * COHERENCE_CO_OCCURRENCE_WEIGHT +
+            temporal * COHERENCE_TEMPORAL_WEIGHT
         )
         
         # Cache for future use

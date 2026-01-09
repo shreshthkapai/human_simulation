@@ -9,7 +9,7 @@ from training_pipeline import load_checkpoint
 from analysis_tools import (cluster_transitions, detect_sub_personas, 
                             get_category_connections, generate_narrative)
 from visualization import plot_learning_trajectory, plot_comprehensive_analysis
-from config import FINAL_CHECKPOINT, MAX_GAP_DAYS, USE_EDGE_TYPES
+from config import FINAL_CHECKPOINT, USE_EDGE_TYPES
 import numpy as np
 
 

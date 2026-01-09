@@ -84,11 +84,18 @@ Return ONLY the JSON array. No explanation."""
     return None
 
 
+def _valid_item(item):
+    """Check if parsed item has correct structure"""
+    return (isinstance(item, dict) and 
+            isinstance(item.get('entities', []), list) and 
+            isinstance(item.get('categories', {}), dict))
+
+
 def parse_batch_response(response, num_queries):
     """Parse batch JSON response from LLM"""
     try:
         data = json.loads(response)
-        if isinstance(data, list) and len(data) == num_queries:
+        if isinstance(data, list) and len(data) == num_queries and all(_valid_item(x) for x in data):
             return data
     except:
         pass
@@ -106,7 +113,7 @@ def parse_batch_response(response, num_queries):
             json_str = response.strip()
         
         data = json.loads(json_str)
-        if isinstance(data, list):
+        if isinstance(data, list) and all(_valid_item(x) for x in data):
             return data
     except:
         pass

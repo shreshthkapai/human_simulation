@@ -4,11 +4,12 @@ Strengthening one category weakens competing categories
 """
 import numpy as np
 from collections import defaultdict
+from config import COMPETITION_STRENGTH
 
 
 class CompetitionManager:
     
-    def __init__(self, knowledge_graph, competition_strength=0.05):
+    def __init__(self, knowledge_graph, competition_strength=COMPETITION_STRENGTH):
         self.kg = knowledge_graph
         self.competition_strength = competition_strength
         self.competition_matrix = {}
