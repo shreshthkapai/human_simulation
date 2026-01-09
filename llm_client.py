@@ -84,38 +84,82 @@ Return ONLY the JSON array. No explanation."""
     return None
 
 
-def _valid_item(item):
-    """Check if parsed item has correct structure"""
-    return (isinstance(item, dict) and 
-            isinstance(item.get('entities', []), list) and 
-            isinstance(item.get('categories', {}), dict))
+def validate_and_clean_item(item):
+    """
+    Validate and clean a single parsed item. Returns cleaned item or None if invalid.
+    This allows per-item validation so good items aren't lost due to one bad item.
+    """
+    if not isinstance(item, dict):
+        return None
+    
+    # Extract and validate entities (must be list of strings)
+    entities = item.get('entities', [])
+    if not isinstance(entities, list):
+        entities = []
+    # Filter to only valid strings
+    entities = [e for e in entities if isinstance(e, str) and e.strip()]
+    
+    # Extract and validate categories (must be dict with float values)
+    categories = item.get('categories', {})
+    if not isinstance(categories, dict):
+        categories = {}
+    # Clean categories: keep only valid key-value pairs, convert values to float
+    cleaned_categories = {}
+    for k, v in categories.items():
+        if isinstance(k, str) and v is not None:
+            try:
+                cleaned_categories[k] = float(v)
+            except (ValueError, TypeError):
+                continue  # Skip invalid values
+    
+    # Must have at least one valid category
+    if not cleaned_categories:
+        return None
+    
+    # Extract attributes (optional, default to empty dict)
+    attributes = item.get('attributes', {})
+    if not isinstance(attributes, dict):
+        attributes = {}
+    
+    return {
+        'entities': entities,
+        'categories': cleaned_categories,
+        'attributes': attributes
+    }
 
 
 def parse_batch_response(response, num_queries):
-    """Parse batch JSON response from LLM"""
+    """
+    Parse batch JSON response from LLM.
+    Returns list of raw items (validation happens per-item in training loop).
+    """
+    data = None
+    
+    # Try direct JSON parse
     try:
         data = json.loads(response)
-        if isinstance(data, list) and len(data) == num_queries and all(_valid_item(x) for x in data):
-            return data
     except:
         pass
     
-    try:
-        if "```json" in response:
-            json_str = response.split("```json")[1].split("```")[0].strip()
-        elif "```" in response:
-            json_str = response.split("```")[1].split("```")[0].strip()
-        elif "[" in response and "]" in response:
-            start = response.find("[")
-            end = response.rfind("]") + 1
-            json_str = response[start:end]
-        else:
-            json_str = response.strip()
-        
-        data = json.loads(json_str)
-        if isinstance(data, list) and all(_valid_item(x) for x in data):
-            return data
-    except:
-        pass
+    # Try extracting from markdown code blocks
+    if data is None:
+        try:
+            if "```json" in response:
+                json_str = response.split("```json")[1].split("```")[0].strip()
+            elif "```" in response:
+                json_str = response.split("```")[1].split("```")[0].strip()
+            elif "[" in response and "]" in response:
+                start = response.find("[")
+                end = response.rfind("]") + 1
+                json_str = response[start:end]
+            else:
+                json_str = response.strip()
+            data = json.loads(json_str)
+        except:
+            pass
+    
+    # Return list if valid, None otherwise
+    if isinstance(data, list):
+        return data
     
     return None

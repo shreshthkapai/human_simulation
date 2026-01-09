@@ -10,7 +10,7 @@ from datetime import datetime
 from knowledge_graph import UserKnowledgeGraph
 from predictor_hybrid import GraphPredictorHybrid
 from transition_detector import TransitionDetector
-from llm_client import query_llm_batch, parse_batch_response
+from llm_client import query_llm_batch, parse_batch_response, validate_and_clean_item
 from personalization import personalize_scores, calculate_blend_weight
 from config import (CATEGORIES, CHECKPOINT_EVERY, BATCH_SIZE, LEARNING_RATE,
                    ENTITY_EDGE_DECAY_RATE, APPLY_DECAY_EVERY)
@@ -105,15 +105,17 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                 if response:
                     parsed_batch = parse_batch_response(response, len(batch_buffer))
                     
-                    if parsed_batch and len(parsed_batch) == len(batch_buffer):
-                        for data, parsed in zip(batch_data_buffer, parsed_batch):
-                            entities = parsed.get('entities', [])
-                            llm_categories = parsed.get('categories', {})
-                            attributes = parsed.get('attributes', {})
-                            
-                            if not llm_categories:
+                    if parsed_batch:
+                        for data, raw_item in zip(batch_data_buffer, parsed_batch):
+                            # Validate and clean each item individually
+                            parsed = validate_and_clean_item(raw_item)
+                            if parsed is None:
                                 skipped += 1
                                 continue
+                            
+                            entities = parsed['entities']
+                            llm_categories = parsed['categories']
+                            attributes = parsed['attributes']
                             
                             # PREDICT FIRST 
                             predicted_dist = predictor.predict_next_category(
@@ -245,10 +247,15 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
             if response:
                 parsed_batch = parse_batch_response(response, len(batch_buffer))
                 if parsed_batch:
-                    for data, parsed in zip(batch_data_buffer, parsed_batch):
-                        entities = parsed.get('entities', [])
-                        llm_categories = parsed.get('categories', {})
-                        attributes = parsed.get('attributes', {})
+                    for data, raw_item in zip(batch_data_buffer, parsed_batch):
+                        # Validate and clean each item individually
+                        parsed = validate_and_clean_item(raw_item)
+                        if parsed is None:
+                            continue
+                            
+                        entities = parsed['entities']
+                        llm_categories = parsed['categories']
+                        attributes = parsed['attributes']
                         
                         if llm_categories:
                             # Predict first
