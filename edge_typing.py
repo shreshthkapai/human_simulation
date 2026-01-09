@@ -10,6 +10,15 @@ from config import (EDGE_TYPE_CAUSAL_WINDOW_HOURS,
                     EDGE_TYPE_MIN_SAMPLES)
 
 
+def _default_co_occurrence_data():
+    """Helper for defaultdict to allow pickling"""
+    return {
+        'sequential': [],      # List of time deltas (A → B)
+        'simultaneous': 0,     # Count of simultaneous appearances
+        'total_pairs': 0       # Total observations
+    }
+
+
 class EdgeTypeDetector:
     """
     Analyzes temporal patterns to infer edge relationship types
@@ -29,11 +38,7 @@ class EdgeTypeDetector:
         self.min_samples = min_samples
         
         # Track co-occurrence patterns
-        self.co_occurrence_data = defaultdict(lambda: {
-            'sequential': [],      # List of time deltas (A → B)
-            'simultaneous': 0,     # Count of simultaneous appearances
-            'total_pairs': 0       # Total observations
-        })
+        self.co_occurrence_data = defaultdict(_default_co_occurrence_data)
     
     def analyze_search_history(self):
         """

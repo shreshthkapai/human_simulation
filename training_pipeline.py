@@ -100,6 +100,10 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
             
             if len(batch_buffer) >= batch_size:
                 # PHASE 1: LLM - Generic semantic scoring
+                processed_before_batch = processed   # Capture state before this batch
+                if processed == 0 and skipped == 0:
+                    print(f"  [STATUS] Sending first batch of {len(batch_buffer)} queries to LLM...")
+
                 response = query_llm_batch(batch_buffer)
                 
                 if response:
@@ -111,11 +115,16 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                             parsed = validate_and_clean_item(raw_item)
                             if parsed is None:
                                 skipped += 1
+                                print(f"  [SKIP] Item #{data['index']}: \"{data['query'][:40]}...\"")
                                 continue
                             
                             entities = parsed['entities']
                             llm_categories = parsed['categories']
                             attributes = parsed['attributes']
+                            
+                            if not llm_categories:
+                                skipped += 1
+                                continue
                             
                             # PREDICT FIRST 
                             predicted_dist = predictor.predict_next_category(
@@ -168,12 +177,15 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                         skipped += len(batch_buffer)
                 else:
                     skipped += len(batch_buffer)
+                    if processed == 0:
+                        print(f"  [WARNING] LLM request failed or returned empty. Skipped {len(batch_buffer)} items.")
                 
                 batch_buffer = []
                 batch_data_buffer = []
                 
                 # Apply temporal decay periodically
-                if processed % APPLY_DECAY_EVERY == 0 and processed > 0:
+                # Check if we crossed the boundary during this batch
+                if (processed // APPLY_DECAY_EVERY > processed_before_batch // APPLY_DECAY_EVERY) and processed > 0:
                     edges_before = kg.G.number_of_edges()
                     predictor.apply_temporal_decay(timestamp, decay_rate=ENTITY_EDGE_DECAY_RATE)
                     edges_after = kg.G.number_of_edges()
@@ -181,8 +193,13 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                     if edges_removed > 0:
                         print(f"  [DECAY] Removed {edges_removed} weak entity↔entity edges")
                 
-                # Progress reporting every 100 searches
-                if processed % 100 == 0 and processed > 0:
+                # Progress reporting every 100 searches (processed OR skipped)
+                # Check if we crossed a 100-item boundary in this batch
+                current_total = processed + skipped
+                prev_total = current_total - batch_size 
+                # (approximate prev_total for check, rigorous enough since batch_size small)
+                
+                if (current_total // 100 > prev_total // 100) or (current_total % 100 == 0 and current_total > 0):
                     elapsed = time.time() - start_time
                     rate = processed / elapsed
                     remaining = (total_searches - start_idx - processed) / rate if rate > 0 else 0
@@ -199,10 +216,11 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                     print(f"  Graph: {kg.G.number_of_nodes():>5} nodes, {kg.G.number_of_edges():>6} edges ({entity_entity_edges} entity↔entity)")
                     print(f"  Learning: Surprise={recent_surprise:.3f}, Blend={current_blend:.2f} (LLM={1-current_blend:.0%}, Graph={current_blend:.0%})")
                     print(f"  Transitions: {len(detector.transitions):>3} detected")
-                    print(f"  Speed: {rate:.2f} searches/sec, ETA: {remaining/3600:.1f}h")
+                    print(f"  Speed: {rate:.2f} searches/sec, ETA: {remaining/3600:.1f}h (Skipped: {skipped})")
                 
                 # Detailed reporting every 500 searches
-                if processed % 500 == 0 and processed > 0:
+                # Check if we crossed the boundary during this batch
+                if (processed // 500 > processed_before_batch // 500) and processed > 0:
                     import numpy as np
                     
                     # Top categories by user affinity
@@ -251,6 +269,7 @@ def full_production_run(df_clean, resume_from=None, checkpoint_every=CHECKPOINT_
                         # Validate and clean each item individually
                         parsed = validate_and_clean_item(raw_item)
                         if parsed is None:
+                            print(f"  [SKIP] Item #{data['index']}: \"{data['query'][:40]}...\"")
                             continue
                             
                         entities = parsed['entities']
