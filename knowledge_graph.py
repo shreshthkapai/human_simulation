@@ -1,6 +1,7 @@
 """
-Knowledge Graph Infrastructure - WITH ENTITY-ENTITY EDGES
-Bidirectional edges + selective entity co-occurrence tracking + rejoin logic
+Knowledge Graph Infrastructure - FIXED
+✅ FIX: Simplified rejoin logic without "dormant" flags
+✅ KEEP: historical_peak for intelligent revival
 """
 import networkx as nx
 import numpy as np
@@ -39,7 +40,10 @@ class UserKnowledgeGraph:
         return True
     
     def _add_entity_cooccurrence_edges(self, entities, timestamp):
-        """Add selective entity-entity co-occurrence edges with rejoin logic"""
+        """
+        Add selective entity-entity co-occurrence edges with SIMPLIFIED rejoin logic
+        ✅ FIX: No "dormant" flags, just check weight < 0.05
+        """
         entity_ids = [f"entity_{e.lower().replace(' ', '_')}" for e in entities 
                      if f"entity_{e.lower().replace(' ', '_')}" in self.G]
         
@@ -54,20 +58,19 @@ class UserKnowledgeGraph:
                 if not self._should_create_entity_edge(entity_A_id, entity_B_id):
                     continue
                 
-                # Forward edge A→B with rejoin logic
+                # ✅ SIMPLIFIED: Forward edge A→B
                 if self.G.has_edge(entity_A_id, entity_B_id):
                     edge_data = self.G[entity_A_id][entity_B_id]
+                    current = edge_data['weight']
                     
-                    if edge_data.get('dormant', False):
+                    # If weight is very low, use historical_peak for smart revival
+                    if current < 0.05:
                         historical_peak = edge_data.get('historical_peak', 0.3)
-                        revival_weight = min(historical_peak * 0.5, 0.4)
-                        edge_data['weight'] = revival_weight
-                        edge_data['dormant'] = False
-                        edge_data['last_updated'] = timestamp
+                        edge_data['weight'] = min(historical_peak * 0.5, 0.4)
                     else:
-                        current = edge_data['weight']
                         edge_data['weight'] = min(current + 0.1, 1.0)
-                        edge_data['last_updated'] = timestamp
+                    
+                    edge_data['last_updated'] = timestamp
                 else:
                     self.G.add_edge(entity_A_id, entity_B_id, 
                                    weight=0.3, 
@@ -75,20 +78,19 @@ class UserKnowledgeGraph:
                                    created=timestamp,
                                    last_updated=timestamp)
                 
-                # Backward edge B→A with rejoin logic
+                # ✅ SIMPLIFIED: Backward edge B→A
                 if self.G.has_edge(entity_B_id, entity_A_id):
                     edge_data = self.G[entity_B_id][entity_A_id]
+                    current = edge_data['weight']
                     
-                    if edge_data.get('dormant', False):
+                    # If weight is very low, use historical_peak for smart revival
+                    if current < 0.05:
                         historical_peak = edge_data.get('historical_peak', 0.3)
-                        revival_weight = min(historical_peak * 0.5, 0.4)
-                        edge_data['weight'] = revival_weight
-                        edge_data['dormant'] = False
-                        edge_data['last_updated'] = timestamp
+                        edge_data['weight'] = min(historical_peak * 0.5, 0.4)
                     else:
-                        current = edge_data['weight']
                         edge_data['weight'] = min(current + 0.1, 1.0)
-                        edge_data['last_updated'] = timestamp
+                    
+                    edge_data['last_updated'] = timestamp
                 else:
                     self.G.add_edge(entity_B_id, entity_A_id,
                                    weight=0.3,
@@ -132,21 +134,21 @@ class UserKnowledgeGraph:
                                        edge_type="belongs_to",
                                        created=timestamp)
                     
-                    # Category→Entity edges with timestamp tracking for decay
+                    # ✅ SIMPLIFIED: Category→Entity edges
                     if self.G.has_edge(cat, entity_id):
                         edge_data = self.G[cat][entity_id]
+                        current = edge_data['weight']
                         
-                        if edge_data.get('dormant', False):
+                        # If weight is very low, revive smartly
+                        if current < 0.05:
                             historical_peak = edge_data.get('historical_peak', 0.35)
-                            revival_weight = min(historical_peak * 0.6, 0.5)
-                            edge_data['weight'] = revival_weight
-                            edge_data['dormant'] = False
-                            edge_data['last_updated'] = timestamp
+                            mention_boost = min(self.G.nodes[entity_id]['mention_count'] / 100.0, 0.5)
+                            edge_data['weight'] = min(historical_peak * 0.6 + mention_boost * 0.05, 0.5)
                         else:
-                            current = edge_data['weight']
                             mention_boost = min(self.G.nodes[entity_id]['mention_count'] / 100.0, 0.5)
                             edge_data['weight'] = min(current + confidence * 0.15 + mention_boost * 0.05, 1.0)
-                            edge_data['last_updated'] = timestamp
+                        
+                        edge_data['last_updated'] = timestamp
                     else:
                         self.G.add_edge(cat, entity_id,
                                        weight=confidence * 0.35,
@@ -154,20 +156,19 @@ class UserKnowledgeGraph:
                                        created=timestamp,
                                        last_updated=timestamp)
             
-            # User→Entity edges with rejoin logic
+            # ✅ SIMPLIFIED: User→Entity edges
             if self.G.has_edge("USER", entity_id):
                 edge_data = self.G["USER"][entity_id]
+                current = edge_data['weight']
                 
-                if edge_data.get('dormant', False):
+                # If weight is very low, revive smartly
+                if current < 0.05:
                     historical_peak = edge_data.get('historical_peak', 0.35)
-                    revival_weight = min(historical_peak * 0.6, 0.5)
-                    edge_data['weight'] = revival_weight
-                    edge_data['dormant'] = False
-                    edge_data['last_updated'] = timestamp
+                    edge_data['weight'] = min(historical_peak * 0.6, 0.5)
                 else:
-                    current = edge_data['weight']
                     edge_data['weight'] = min(current + 0.15, 1.0)
-                    edge_data['last_updated'] = timestamp
+                
+                edge_data['last_updated'] = timestamp
             else:
                 self.G.add_edge("USER", entity_id,
                                weight=0.35,

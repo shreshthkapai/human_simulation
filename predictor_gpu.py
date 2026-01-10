@@ -1,5 +1,7 @@
 """
-GPU Predictor - Complete with All Features
+GPU Predictor - FIXED
+✅ FIX: Simplified decay logic without "dormant" flags
+✅ FIX: Accurate logging
 """
 import torch
 import numpy as np
@@ -270,19 +272,13 @@ class GraphPredictorGPU:
     
     def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
         """
-        Apply temporal decay to edges representing changing interests and associations.
-        
-        Decays (threshold 0.05):
-        - User→Entity: Interest in specific entities fades without reinforcement
-        - Entity↔Entity: Temporal co-occurrence associations weaken over time
-        - Category→Entity: Entity salience within categories changes
-        
-        Preserved (no decay):
-        - Entity→Category: Definitional relationships
-        - User↔Category: Handled by competition mechanism
-        - Entity→User: Historical identity markers
+        ✅ FIXED: Simplified temporal decay
+        Apply decay to changing interests and associations
+        Track historical_peak for intelligent revival
         """
         DECAYABLE_EDGE_TYPES = {'interested_in', 'co_occurs', 'suggests'}
+        
+        edges_affected = 0
         
         for u, v, data in self.kg.G.edges(data=True):
             edge_type = data.get('edge_type')
@@ -302,14 +298,16 @@ class GraphPredictorGPU:
             decay_factor = np.exp(-decay_rate * days_since)
             new_weight = data['weight'] * decay_factor
             
-            # Dormant state at threshold 0.05
+            # ✅ SIMPLIFIED: Just update weight and track peak
             if new_weight < 0.05:
-                data['dormant'] = True
-                data['weight'] = 0.01
-                data['historical_peak'] = data.get('historical_peak', data['weight'] / decay_factor)
+                data['weight'] = 0.01  # Low weight threshold
+                data['historical_peak'] = max(data.get('historical_peak', 0), data['weight'] / decay_factor)
+                edges_affected += 1
             else:
                 data['weight'] = max(new_weight, 0.01)
                 data['historical_peak'] = max(data.get('historical_peak', 0), data['weight'])
+        
+        return edges_affected
     
     def analyze_and_tag_edge_types(self):
         if self.edge_type_detector:
