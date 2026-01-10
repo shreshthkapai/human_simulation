@@ -173,7 +173,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                             final_categories = personalize_scores(llm_categories, entities, kg, blend_weight)
                             
                             # Verbose debugging for first few or periodic items
-                            if processed < 5 or (processed % 1000 == 0 and processed < 5000):
+                            if processed < 10 or (processed % 100 == 0 and processed < 5000):
                                 print(f"\n  [EXAMPLE] Query: \"{data['query'][:50]}...\"")
                                 print(f"    Phase 1 (LLM):   {dict(list(llm_categories.items())[:2])}")
                                 print(f"    Phase 2 (Final): {dict(list(final_categories.items())[:2])}")
