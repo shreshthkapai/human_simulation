@@ -1,6 +1,6 @@
 """
 Knowledge Graph Infrastructure - WITH ENTITY-ENTITY EDGES
-Bidirectional edges + selective entity co-occurrence tracking
+Bidirectional edges + selective entity co-occurrence tracking + rejoin logic
 """
 import networkx as nx
 import numpy as np
@@ -39,7 +39,7 @@ class UserKnowledgeGraph:
         return True
     
     def _add_entity_cooccurrence_edges(self, entities, timestamp):
-        """Add selective entity-entity co-occurrence edges"""
+        """Add selective entity-entity co-occurrence edges with rejoin logic"""
         entity_ids = [f"entity_{e.lower().replace(' ', '_')}" for e in entities 
                      if f"entity_{e.lower().replace(' ', '_')}" in self.G]
         
@@ -54,35 +54,56 @@ class UserKnowledgeGraph:
                 if not self._should_create_entity_edge(entity_A_id, entity_B_id):
                     continue
                 
+                # Forward edge A→B with rejoin logic
                 if self.G.has_edge(entity_A_id, entity_B_id):
-                    current = self.G[entity_A_id][entity_B_id]['weight']
-                    self.G[entity_A_id][entity_B_id]['weight'] = min(current + 0.1, 1.0)
-                    self.G[entity_A_id][entity_B_id]['last_updated'] = timestamp  
+                    edge_data = self.G[entity_A_id][entity_B_id]
+                    
+                    if edge_data.get('dormant', False):
+                        historical_peak = edge_data.get('historical_peak', 0.3)
+                        revival_weight = min(historical_peak * 0.5, 0.4)
+                        edge_data['weight'] = revival_weight
+                        edge_data['dormant'] = False
+                        edge_data['last_updated'] = timestamp
+                    else:
+                        current = edge_data['weight']
+                        edge_data['weight'] = min(current + 0.1, 1.0)
+                        edge_data['last_updated'] = timestamp
                 else:
                     self.G.add_edge(entity_A_id, entity_B_id, 
                                    weight=0.3, 
                                    edge_type='co_occurs',
                                    created=timestamp,
-                                   last_updated=timestamp)  
+                                   last_updated=timestamp)
                 
+                # Backward edge B→A with rejoin logic
                 if self.G.has_edge(entity_B_id, entity_A_id):
-                    current = self.G[entity_B_id][entity_A_id]['weight']
-                    self.G[entity_B_id][entity_A_id]['weight'] = min(current + 0.1, 1.0)
-                    self.G[entity_B_id][entity_A_id]['last_updated'] = timestamp  
+                    edge_data = self.G[entity_B_id][entity_A_id]
+                    
+                    if edge_data.get('dormant', False):
+                        historical_peak = edge_data.get('historical_peak', 0.3)
+                        revival_weight = min(historical_peak * 0.5, 0.4)
+                        edge_data['weight'] = revival_weight
+                        edge_data['dormant'] = False
+                        edge_data['last_updated'] = timestamp
+                    else:
+                        current = edge_data['weight']
+                        edge_data['weight'] = min(current + 0.1, 1.0)
+                        edge_data['last_updated'] = timestamp
+                else:
                     self.G.add_edge(entity_B_id, entity_A_id,
                                    weight=0.3,
                                    edge_type='co_occurs',
                                    created=timestamp,
-                                   last_updated=timestamp)  
+                                   last_updated=timestamp)
     
     def add_search_event(self, timestamp, query, entities, categories, attributes):
         event = {
-        'timestamp': timestamp,
-        'query': query,
-        'entities': entities,
-        'entity_ids': [f"entity_{e.lower().replace(' ', '_')}" for e in entities],  # ✅ ADD THIS LINE
-        'categories': categories,
-        'attributes': attributes
+            'timestamp': timestamp,
+            'query': query,
+            'entities': entities,
+            'entity_ids': [f"entity_{e.lower().replace(' ', '_')}" for e in entities],
+            'categories': categories,
+            'attributes': attributes
         }
         self.search_history.append(event)
         
@@ -99,6 +120,7 @@ class UserKnowledgeGraph:
             self.G.nodes[entity_id]['mention_count'] += 1
             self.G.nodes[entity_id]['last_seen'] = timestamp
             
+            # Entity→Category edges (definitional, no decay)
             for cat, confidence in categories.items():
                 if confidence > 0.3:
                     if self.G.has_edge(entity_id, cat):
@@ -110,25 +132,50 @@ class UserKnowledgeGraph:
                                        edge_type="belongs_to",
                                        created=timestamp)
                     
+                    # Category→Entity edges with timestamp tracking for decay
                     if self.G.has_edge(cat, entity_id):
-                        current = self.G[cat][entity_id]['weight']
-                        mention_boost = min(self.G.nodes[entity_id]['mention_count'] / 100.0, 0.5)
-                        self.G[cat][entity_id]['weight'] = min(current + confidence * 0.15 + mention_boost * 0.05, 1.0)
+                        edge_data = self.G[cat][entity_id]
+                        
+                        if edge_data.get('dormant', False):
+                            historical_peak = edge_data.get('historical_peak', 0.35)
+                            revival_weight = min(historical_peak * 0.6, 0.5)
+                            edge_data['weight'] = revival_weight
+                            edge_data['dormant'] = False
+                            edge_data['last_updated'] = timestamp
+                        else:
+                            current = edge_data['weight']
+                            mention_boost = min(self.G.nodes[entity_id]['mention_count'] / 100.0, 0.5)
+                            edge_data['weight'] = min(current + confidence * 0.15 + mention_boost * 0.05, 1.0)
+                            edge_data['last_updated'] = timestamp
                     else:
                         self.G.add_edge(cat, entity_id,
                                        weight=confidence * 0.35,
                                        edge_type="suggests",
-                                       created=timestamp)
+                                       created=timestamp,
+                                       last_updated=timestamp)
             
+            # User→Entity edges with rejoin logic
             if self.G.has_edge("USER", entity_id):
-                current = self.G["USER"][entity_id]['weight']
-                self.G["USER"][entity_id]['weight'] = min(current + 0.15, 1.0)
+                edge_data = self.G["USER"][entity_id]
+                
+                if edge_data.get('dormant', False):
+                    historical_peak = edge_data.get('historical_peak', 0.35)
+                    revival_weight = min(historical_peak * 0.6, 0.5)
+                    edge_data['weight'] = revival_weight
+                    edge_data['dormant'] = False
+                    edge_data['last_updated'] = timestamp
+                else:
+                    current = edge_data['weight']
+                    edge_data['weight'] = min(current + 0.15, 1.0)
+                    edge_data['last_updated'] = timestamp
             else:
                 self.G.add_edge("USER", entity_id,
                                weight=0.35,
                                edge_type="interested_in",
-                               created=timestamp)
+                               created=timestamp,
+                               last_updated=timestamp)
             
+            # Entity→User edges (characterization, no decay)
             if self.G.has_edge(entity_id, "USER"):
                 current = self.G[entity_id]["USER"]['weight']
                 uniqueness = 1.0 / (1.0 + self.G.nodes[entity_id]['mention_count'] / 50.0)
@@ -141,6 +188,7 @@ class UserKnowledgeGraph:
         
         self._add_entity_cooccurrence_edges(entities, timestamp)
         
+        # User→Category edges (handled by competition, timestamp for tracking only)
         for cat, confidence in categories.items():
             if self.G.has_edge("USER", cat):
                 current = self.G["USER"][cat]['weight']
