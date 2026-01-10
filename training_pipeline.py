@@ -1,12 +1,9 @@
 """
-Production Training Pipeline - Two-Phase System + Temporal Decay
-Phase 1: LLM generic scoring
-Phase 2: Graph personalization
-
-FIXES:
-1. Checkpoint numbering properly persists across resumes
-2. Periodic triggers fixed to handle all batch sizes
-3. Coherence metadata rebuilds periodically
+Production Training Pipeline - FIXED VERSION
+✅ FIX 1: Checkpoint duplication loop fixed
+✅ FIX 2: Edge type analysis added every 3000 searches
+✅ FIX 3: Coherence cache cleared every 1000 searches
+✅ FIX 4: Accurate decay logging
 """
 import pickle
 import os
@@ -25,14 +22,13 @@ from config import (CATEGORIES, CHECKPOINT_EVERY, BATCH_SIZE, LEARNING_RATE,
 def save_checkpoint(kg, predictor, detector, checkpoint_num, last_processed_idx):
     """
     Save checkpoint with EXPLICIT checkpoint number
-    ✅ FIX: Now saves checkpoint_num in the checkpoint data
     """
     checkpoint_data = {
         'kg': kg,
         'predictor': predictor,
         'detector': detector,
         'last_processed_idx': last_processed_idx,
-        'checkpoint_num': checkpoint_num,  # ✅ Save the counter!
+        'checkpoint_num': checkpoint_num,
         'timestamp': datetime.now()
     }
     
@@ -49,7 +45,6 @@ def save_checkpoint(kg, predictor, detector, checkpoint_num, last_processed_idx)
 def load_checkpoint(filename):
     """
     Load checkpoint and restore counter
-    ✅ FIX: Properly extracts and returns checkpoint_num
     """
     if not os.path.exists(filename):
         return None, None, None, 0, 0
@@ -57,11 +52,9 @@ def load_checkpoint(filename):
     with open(filename, 'rb') as f:
         data = pickle.load(f)
     
-    # ✅ Try to get checkpoint_num from saved data first
     if 'checkpoint_num' in data:
         checkpoint_num = data['checkpoint_num'] + 1
     else:
-        # Fallback: extract from filename
         checkpoint_num = 0
         match = re.search(r'checkpoint_(\d+).pkl', filename)
         if match:
@@ -76,14 +69,13 @@ def load_checkpoint(filename):
 
 def should_trigger(counter_name, processed, processed_before, interval):
     """
-    ✅ FIX: Robust trigger detection that handles any batch size
+    Robust trigger detection that handles any batch size
     Returns list of trigger points that were crossed
     """
     before_count = processed_before // interval
     after_count = processed // interval
     
     if after_count > before_count:
-        # Calculate all trigger points crossed
         triggers_crossed = after_count - before_count
         return True, triggers_crossed
     return False, 0
@@ -92,7 +84,7 @@ def should_trigger(counter_name, processed, processed_before, interval):
 def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                        checkpoint_every=CHECKPOINT_EVERY, batch_size=BATCH_SIZE):
     """
-    ✅ FIX: Now accepts start_checkpoint_num parameter
+    Full training pipeline with all fixes applied
     """
     
     if resume_from and os.path.exists(resume_from):
@@ -103,7 +95,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
         predictor = GraphPredictorHybrid(kg)
         detector = TransitionDetector()
         start_idx = 0
-        checkpoint_num = start_checkpoint_num  # ✅ Use passed value
+        checkpoint_num = start_checkpoint_num
         print("[START] Fresh run initialized")
     
     total_searches = len(df_clean)
@@ -127,12 +119,13 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
     start_time = time.time()
     last_checkpoint_time = start_time
     
-    # ✅ FIX: Track last trigger counts for robust boundary detection
+    # Track last trigger counts for robust boundary detection
     last_decay_trigger = 0
     last_progress_trigger = 0
     last_stats_trigger = 0
     last_checkpoint_trigger = 0
     last_coherence_rebuild = 0
+    last_edge_type_analysis = 0  # ✅ NEW: Track edge type analysis
     
     try:
         for idx in range(start_idx, total_searches):
@@ -211,7 +204,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                 batch_data_buffer = []
                 
                 # ========================================================================
-                # ✅ FIX: PERIODIC TRIGGERS - ROBUST BOUNDARY DETECTION
+                # PERIODIC TRIGGERS - ROBUST BOUNDARY DETECTION
                 # ========================================================================
                 
                 # 1. Temporal Decay (every APPLY_DECAY_EVERY)
@@ -219,9 +212,9 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                 if should_decay and processed > 0:
                     edges_before = kg.G.number_of_edges()
                     predictor.apply_temporal_decay(timestamp, decay_rate=ENTITY_EDGE_DECAY_RATE)
-                    edges_removed = edges_before - kg.G.number_of_edges()
-                    if edges_removed > 0:
-                        print(f"  [DECAY] Removed {edges_removed} weak entity-entity edges")
+                    edges_changed = edges_before - kg.G.number_of_edges()
+                    if edges_changed > 0:
+                        print(f"  [DECAY] Set {edges_changed} edges to low weight (decay)")  # ✅ FIXED MESSAGE
                     last_decay_trigger = processed
                 
                 # 2. Progress Reporting (every 100 items)
@@ -257,21 +250,30 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                     print(f"  ╚══════════════════════════════════╝")
                     last_stats_trigger = processed
                 
-                # 4. ✅ FIX: Coherence Metadata Rebuild (every 1000 items)
+                # 4. ✅ FIX: Coherence Metadata Rebuild + Cache Clear (every 1000 items)
                 should_rebuild, rebuild_count = should_trigger('coherence', processed, last_coherence_rebuild, 1000)
                 if should_rebuild and processed > 0:
-                    print(f"  [COHERENCE] Updating metadata incrementally...")
+                    print(f"  [COHERENCE] Updating metadata and clearing cache...")
                     if predictor.coherence_calc:
                         predictor.coherence_calc.incremental_update()
-                    last_coherence_rebuild = processed  
+                        predictor.coherence_calc.clear_cache()  # ✅ NEW: Clear cache
+                    last_coherence_rebuild = processed
                 
-                # 5. Checkpoints (every CHECKPOINT_EVERY)
+                # 5. ✅ NEW: Edge Type Analysis (every 3000 items)
+                should_analyze_edges, edge_analysis_count = should_trigger('edge_type', processed, last_edge_type_analysis, 3000)
+                if should_analyze_edges and processed > 0:
+                    print(f"  [EDGE TYPES] Analyzing temporal patterns...")
+                    if predictor.edge_type_detector:
+                        predictor.edge_type_detector.analyze_search_history()
+                        type_dist = predictor.edge_type_detector.tag_all_edges()
+                        print(f"    Tagged: {sum(type_dist.values())} edges")
+                    last_edge_type_analysis = processed
+                
+                # 6. ✅ FIX: Checkpoints (every CHECKPOINT_EVERY) - NO LOOP
                 should_checkpoint, checkpoint_count = should_trigger('checkpoint', processed, last_checkpoint_trigger, checkpoint_every)
                 if should_checkpoint and processed > 0:
-                    # Handle multiple crossings (e.g., if batch_size is huge)
-                    for _ in range(checkpoint_count):
-                        save_checkpoint(kg, predictor, detector, checkpoint_num, idx)
-                        checkpoint_num += 1
+                    save_checkpoint(kg, predictor, detector, checkpoint_num, idx)
+                    checkpoint_num += checkpoint_count  # ✅ FIXED: Increment by count, not in loop
                     last_checkpoint_trigger = processed
                     last_checkpoint_time = time.time()
         
