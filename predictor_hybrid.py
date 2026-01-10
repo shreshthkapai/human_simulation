@@ -241,12 +241,29 @@ class GraphPredictorHybrid:
             self.competition_manager.rebuild_competition_matrix()
     
     def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
-        """Decay entity-entity co-occurrence edges over time"""
-        edges_to_remove = []
+        """
+        Apply temporal decay to edges representing changing interests and associations.
+        
+        Decays (threshold 0.05):
+        - User→Entity: Interest in specific entities fades without reinforcement
+        - Entity↔Entity: Temporal co-occurrence associations weaken over time
+        - Category→Entity: Entity salience within categories changes
+        
+        Preserved (no decay):
+        - Entity→Category: Definitional relationships
+        - User↔Category: Handled by competition mechanism
+        - Entity→User: Historical identity markers
+        """
+        DECAYABLE_EDGE_TYPES = {'interested_in', 'co_occurs', 'suggests'}
         
         for u, v, data in self.kg.G.edges(data=True):
-            # Skip definitions (Entity -> Category) - Facts are eternal
-            if data.get('edge_type') == 'belongs_to':
+            edge_type = data.get('edge_type')
+            
+            if edge_type not in DECAYABLE_EDGE_TYPES:
+                continue
+            
+            # User→Category handled by competition
+            if edge_type == 'interested_in' and u == 'USER' and v in self.kg.categories:
                 continue
             
             last_updated = data.get('last_updated')
@@ -255,16 +272,16 @@ class GraphPredictorHybrid:
             
             days_since = (current_timestamp - last_updated).days
             decay_factor = np.exp(-decay_rate * days_since)
-            
             new_weight = data['weight'] * decay_factor
             
+            # Dormant state at threshold 0.05
             if new_weight < 0.05:
-                edges_to_remove.append((u, v))
+                data['dormant'] = True
+                data['weight'] = 0.01
+                data['historical_peak'] = data.get('historical_peak', data['weight'] / decay_factor)
             else:
                 data['weight'] = max(new_weight, 0.01)
-        
-        for u, v in edges_to_remove:
-            self.kg.G.remove_edge(u, v)
+                data['historical_peak'] = max(data.get('historical_peak', 0), data['weight'])
     
     def analyze_and_tag_edge_types(self):
         if self.edge_type_detector:
