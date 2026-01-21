@@ -1,5 +1,5 @@
 """
-Configuration - All Features
+Configuration
 """
 
 SEARCH_HISTORY_FILE = 'search_history.json'
@@ -46,7 +46,7 @@ APPLY_DECAY_EVERY = 100
 
 # Adaptive thresholds
 TRANSITION_WINDOW_SIZE = 25
-SURPRISE_THRESHOLD_SIGMA = 1.5
+SURPRISE_THRESHOLD_SIGMA = 0.8
 MAX_GAP_DAYS_MULTIPLIER = 1.0
 MIN_CLUSTER_SIZE_SIGMA = 0.5
 
