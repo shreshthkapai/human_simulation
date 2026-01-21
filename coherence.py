@@ -1,7 +1,5 @@
 """
-Path Coherence Module - FIXED
-✅ FIX: Cache cleared during incremental updates
-✅ FIX: Consistent entity ID handling
+Path Coherence Module
 """
 import numpy as np
 from collections import defaultdict
@@ -53,7 +51,7 @@ class CoherenceCalculator:
                         if node in search.get('categories', {}):
                             appears = True
                     elif node_type == 'entity':
-                        # ✅ FIX: Use entity_ids if available, fallback consistently
+                        #  Use entity_ids if available, fallback consistently
                         entity_ids = search.get('entity_ids', [])
                         if node in entity_ids:
                             appears = True
@@ -110,7 +108,7 @@ class CoherenceCalculator:
                 if timestamp:
                     self.node_metadata[category]['typical_hours'].append(timestamp.hour)
             
-            # ✅ FIX: Process entities using entity_ids consistently
+            # Process entities using entity_ids consistently
             entity_ids = search.get('entity_ids', [])
             
             for entity_id in entity_ids:

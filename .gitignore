@@ -1,0 +1,18 @@
+# Ignore specific checkpoints
+checkpoint_80
+checkpoint_81
+checkpoint_82
+checkpoint_83
+checkpoint_FINAL
+
+# If they are directories, ignore their contents too
+checkpoint_80/
+checkpoint_81/
+checkpoint_82/
+checkpoint_83/
+checkpoint_FINAL/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo

@@ -54,10 +54,10 @@ def main():
     if latest_checkpoint:
         print(f"  [AUTO-RESUME] Found existing checkpoint: {latest_checkpoint}")
         try:
-            # ✅ FIX: Capture all 5 return values including checkpoint_num
+            # Capture all 5 return values including checkpoint_num
             kg, predictor, detector, last_idx, checkpoint_num = load_checkpoint(latest_checkpoint)
             
-            # ✅ FIX: Pass checkpoint_num to full_production_run
+            # Pass checkpoint_num to full_production_run
             kg, predictor, detector = full_production_run(
                 df, 
                 resume_from=latest_checkpoint,

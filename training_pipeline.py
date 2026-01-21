@@ -1,9 +1,5 @@
 """
-Production Training Pipeline - FIXED VERSION
-✅ FIX 1: Checkpoint duplication loop fixed
-✅ FIX 2: Edge type analysis added every 3000 searches
-✅ FIX 3: Coherence cache cleared every 1000 searches
-✅ FIX 4: Accurate decay logging
+Production Training Pipeline
 """
 import pickle
 import os
@@ -125,7 +121,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
     last_stats_trigger = 0
     last_checkpoint_trigger = 0
     last_coherence_rebuild = 0
-    last_edge_type_analysis = 0  # ✅ NEW: Track edge type analysis
+    last_edge_type_analysis = 0  
     
     try:
         for idx in range(start_idx, total_searches):
@@ -250,7 +246,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                     print(f"  ╚══════════════════════════════════╝")
                     last_stats_trigger = processed
                 
-                # 4. ✅ FIX: Coherence Metadata Rebuild + Cache Clear (every 1000 items)
+                # 4. Coherence Metadata Rebuild + Cache Clear (every 1000 items)
                 should_rebuild, rebuild_count = should_trigger('coherence', processed, last_coherence_rebuild, 1000)
                 if should_rebuild and processed > 0:
                     print(f"  [COHERENCE] Updating metadata and clearing cache...")
@@ -259,7 +255,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                         predictor.coherence_calc.clear_cache()  # ✅ NEW: Clear cache
                     last_coherence_rebuild = processed
                 
-                # 5. ✅ NEW: Edge Type Analysis (every 3000 items)
+                # 5. Edge Type Analysis (every 3000 items)
                 should_analyze_edges, edge_analysis_count = should_trigger('edge_type', processed, last_edge_type_analysis, 3000)
                 if should_analyze_edges and processed > 0:
                     print(f"  [EDGE TYPES] Analyzing temporal patterns...")
@@ -269,7 +265,7 @@ def full_production_run(df_clean, resume_from=None, start_checkpoint_num=0,
                         print(f"    Tagged: {sum(type_dist.values())} edges")
                     last_edge_type_analysis = processed
                 
-                # 6. ✅ FIX: Checkpoints (every CHECKPOINT_EVERY) - NO LOOP
+                # 6. Checkpoints (every CHECKPOINT_EVERY) - NO LOOP
                 should_checkpoint, checkpoint_count = should_trigger('checkpoint', processed, last_checkpoint_trigger, checkpoint_every)
                 if should_checkpoint and processed > 0:
                     save_checkpoint(kg, predictor, detector, checkpoint_num, idx)

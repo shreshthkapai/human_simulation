@@ -1,7 +1,5 @@
 """
-GPU Predictor - FIXED
-✅ FIX: Simplified decay logic without "dormant" flags
-✅ FIX: Accurate logging
+GPU Predictor
 """
 import torch
 import numpy as np
@@ -272,7 +270,6 @@ class GraphPredictorGPU:
     
     def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
         """
-        ✅ FIXED: Simplified temporal decay
         Apply decay to changing interests and associations
         Track historical_peak for intelligent revival
         """
@@ -298,7 +295,7 @@ class GraphPredictorGPU:
             decay_factor = np.exp(-decay_rate * days_since)
             new_weight = data['weight'] * decay_factor
             
-            # ✅ SIMPLIFIED: Just update weight and track peak
+            # Just update weight and track peak
             if new_weight < 0.05:
                 data['weight'] = 0.01  # Low weight threshold
                 data['historical_peak'] = max(data.get('historical_peak', 0), data['weight'] / decay_factor)

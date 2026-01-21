@@ -1,0 +1,1714 @@
+================================================================================
+SURPRISE SCORE DISTRIBUTION ANALYSIS
+================================================================================
+
+OVERALL STATISTICS:
+  Total scores: 42,292
+  Mean: 2.4186
+  Median: 1.5085
+  Std Dev: 3.5631
+  Min: 0.0299
+  Max: 23.0259
+
+PERCENTILE DISTRIBUTION:
+  10th percentile: 0.6728
+  25th percentile: 1.0389
+  50th percentile: 1.5085
+  75th percentile: 2.2083
+  90th percentile: 3.5856
+  95th percentile: 9.5163
+  99th percentile: 23.0259
+
+LEARNING TRAJECTORY (by quintile):
+  Quintile 1 (0-8,458):
+    Mean: 2.8036
+    Std: 4.1325
+  Quintile 2 (8,458-16,916):
+    Mean: 2.3929
+    Std: 3.4731
+  Quintile 3 (16,916-25,374):
+    Mean: 2.3151
+    Std: 3.5314
+  Quintile 4 (25,374-33,832):
+    Mean: 2.3470
+    Std: 3.4648
+  Quintile 5 (33,832-42,292):
+    Mean: 2.2346
+    Std: 3.1086
+
+TOP 50 SURPRISE SPIKES (Potential Transitions):
+  1. Index 1,479: 23.0259
+  2. Index 1,152: 23.0259
+  3. Index 19,114: 23.0259
+  4. Index 11,809: 23.0259
+  5. Index 3,534: 23.0259
+  6. Index 1,339: 23.0259
+  7. Index 27,581: 23.0259
+  8. Index 1,417: 23.0259
+  9. Index 3,336: 23.0259
+  10. Index 11,245: 23.0259
+  11. Index 1,534: 23.0259
+  12. Index 17,215: 23.0259
+  13. Index 17,150: 23.0259
+  14. Index 2,738: 23.0259
+  15. Index 23,174: 23.0259
+  16. Index 1,490: 23.0259
+  17. Index 1,221: 23.0259
+  18. Index 41,918: 23.0259
+  19. Index 1,154: 23.0259
+  20. Index 2,606: 23.0259
+  21. Index 17,377: 23.0259
+  22. Index 78: 23.0259
+  23. Index 23,686: 23.0259
+  24. Index 2,396: 23.0259
+  25. Index 1,933: 23.0259
+  26. Index 3,032: 23.0259
+  27. Index 3,093: 23.0259
+  28. Index 12,510: 23.0259
+  29. Index 32,947: 23.0259
+  30. Index 32,792: 23.0259
+  31. Index 41,655: 23.0259
+  32. Index 1,795: 23.0259
+  33. Index 17,415: 23.0259
+  34. Index 3,546: 23.0259
+  35. Index 23,928: 23.0259
+  36. Index 1,421: 23.0259
+  37. Index 23,411: 23.0259
+  38. Index 32,775: 23.0259
+  39. Index 28,567: 23.0259
+  40. Index 26,864: 23.0259
+  41. Index 24,950: 23.0259
+  42. Index 15,383: 23.0259
+  43. Index 70: 23.0259
+  44. Index 1,604: 23.0259
+  45. Index 3,333: 23.0259
+  46. Index 3,013: 23.0259
+  47. Index 28,466: 23.0259
+  48. Index 3,468: 23.0259
+  49. Index 33,490: 23.0259
+  50. Index 11,143: 23.0259
+
+ADAPTIVE THRESHOLD ANALYSIS:
+  σ=0.5: threshold=4.2002, 3,365 scores above (7.96%)
+  σ=0.8: threshold=5.2691, 2,868 scores above (6.78%)
+  σ=1.0: threshold=5.9817, 2,849 scores above (6.74%)
+  σ=1.2: threshold=6.6943, 2,810 scores above (6.64%)
+  σ=1.5: threshold=7.7633, 2,567 scores above (6.07%)
+  σ=2.0: threshold=9.5448, 2,104 scores above (4.97%)
+
+
+================================================================================
+KNOWLEDGE GRAPH STRUCTURE
+================================================================================
+
+BASIC STATISTICS:
+  Total nodes: 31,640
+  Total edges: 193,621
+  Avg degree: 6.12
+
+NODE TYPE BREAKDOWN:
+  entity: 31,625
+  category: 9
+  unknown: 5
+  user: 1
+
+EDGE TYPE BREAKDOWN:
+  suggests: 57,748
+  belongs_to: 57,748
+  interested_in: 31,634
+  characterizes: 31,625
+  co_occurs: 14,857
+  defines: 9
+
+RELATIONSHIP TYPE BREAKDOWN:
+  temporal_correlation: 118,510 (61.2%)
+  unknown: 74,988 (38.7%)
+  associative: 111 (0.1%)
+  causal: 12 (0.0%)
+
+
+================================================================================
+DATA SCHEMA - WHAT EACH NODE/EDGE CARRIES
+================================================================================
+
+NODE TYPES AND THEIR DATA:
+
+1. USER NODE:
+   Type: user (singleton)
+   Attributes:
+     - node_type: str
+
+2. CATEGORY NODES:
+   Type: category (n=9)
+   Categories: Fashion, Travel, Daily_Life, Life_Transitions, Location, Work_Career, Entertainment, Technology, News_Politics
+   Attributes (example from 'Fashion'):
+     - node_type: str
+
+3. ENTITY NODES:
+   Type: entity (n=31,625)
+   ID format: 'entity_lowercase_name_with_underscores'
+   Attributes (example from 'Gmail'):
+     - node_type: str
+     - label: str
+         (human-readable name)
+     - first_seen: Timestamp (datetime)
+         (timestamp of first appearance)
+     - mention_count: int
+         (how many searches mentioned this)
+     - last_seen: Timestamp (datetime)
+         (timestamp of most recent appearance)
+
+--------------------------------------------------------------------------------
+EDGE TYPES AND THEIR DATA:
+
+1. EDGE TYPE: 'belongs_to'
+   Pattern: entity → category
+   Count: 57,748
+   Attributes:
+     - weight: float
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - created: Timestamp (datetime)
+         (when edge first appeared)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: Gmail → Technology
+
+2. EDGE TYPE: 'characterizes'
+   Pattern: entity → user
+   Count: 31,625
+   Attributes:
+     - weight: float
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - created: Timestamp (datetime)
+         (when edge first appeared)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: Gmail → USER
+
+3. EDGE TYPE: 'co_occurs'
+   Pattern: entity → entity
+   Count: 14,857
+   Attributes:
+     - weight: float
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - created: Timestamp (datetime)
+         (when edge first appeared)
+     - last_updated: Timestamp (datetime)
+         (when edge last strengthened)
+     - historical_peak: float64
+         (highest weight ever achieved)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: Gmail → Google Drive
+
+4. EDGE TYPE: 'defines'
+   Pattern: category → user
+   Count: 9
+   Attributes:
+     - weight: float64
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: Fashion → USER
+
+5. EDGE TYPE: 'interested_in'
+   Pattern: user → category
+   Count: 31,634
+   Attributes:
+     - weight: float64
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - last_updated: Timestamp (datetime)
+         (when edge last strengthened)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: USER → Fashion
+
+6. EDGE TYPE: 'suggests'
+   Pattern: category → entity
+   Count: 57,748
+   Attributes:
+     - weight: float
+         (strength of connection, 0.0-1.0)
+     - edge_type: str
+         (semantic meaning of edge)
+     - created: Timestamp (datetime)
+         (when edge first appeared)
+     - last_updated: Timestamp (datetime)
+         (when edge last strengthened)
+     - historical_peak: float64
+         (highest weight ever achieved)
+     - relationship_type: str
+         (temporal: causal/associative/temporal_correlation)
+     - type_strength: float
+         (confidence in relationship_type)
+   Example: Fashion → Face
+
+--------------------------------------------------------------------------------
+EDGE TYPE SEMANTICS:
+
+  • interested_in: USER → category: User shows interest in this category
+    (31,634 edges)
+
+  • defines: category → USER: Category helps define user identity
+    (9 edges)
+
+  • belongs_to: entity → category: Entity is classified under category
+    (57,748 edges)
+
+  • suggests: category → entity: Category suggests this entity is relevant
+    (57,748 edges)
+
+  • co_occurs: entity → entity: Entities appear together in searches
+    (14,857 edges)
+
+  • characterizes: entity → USER: Entity reveals something about user
+    (31,625 edges)
+
+--------------------------------------------------------------------------------
+RELATIONSHIP TYPE SEMANTICS (Temporal Patterns):
+
+  • causal: A consistently appears BEFORE B (sequential dependency)
+    (12 edges, 0.0%)
+
+  • associative: A and B appear simultaneously (co-occurrence)
+    (111 edges, 0.1%)
+
+  • temporal_correlation: A and B appear at similar times but not together
+    (118,510 edges, 61.2%)
+
+  • unknown: Insufficient data to determine relationship type
+    (58,066 edges, 30.0%)
+
+
+================================================================================
+CATEGORY ANALYSIS
+================================================================================
+
+USER → CATEGORY WEIGHTS (Interest Strength):
+  Daily_Life          : 1.0000
+  Location            : 0.9873
+  News_Politics       : 0.9833
+  Fashion             : 0.9518
+  Work_Career         : 0.8605
+  Technology          : 0.8063
+  Travel              : 0.7639
+  Entertainment       : 0.6004
+  Life_Transitions    : 0.2206
+
+CATEGORY → USER WEIGHTS (Defining Strength):
+  Daily_Life          : 1.0000
+  Location            : 0.9962
+  News_Politics       : 0.9950
+  Fashion             : 0.9855
+  Work_Career         : 0.9581
+  Technology          : 0.9419
+  Travel              : 0.9292
+  Entertainment       : 0.8988
+  Life_Transitions    : 0.8838
+
+CATEGORY OCCURRENCE IN SEARCHES:
+  Work_Career         : 42,233 searches (99.9%)
+  Location            : 42,220 searches (99.8%)
+  Technology          : 42,215 searches (99.8%)
+  Entertainment       : 42,205 searches (99.8%)
+  News_Politics       : 42,204 searches (99.8%)
+  Travel              : 42,203 searches (99.8%)
+  Life_Transitions    : 42,201 searches (99.8%)
+  Daily_Life          : 42,198 searches (99.8%)
+  Fashion             : 42,198 searches (99.8%)
+  Shopping            : 2 searches (0.0%)
+  Finance             : 2 searches (0.0%)
+  Electronics         : 1 searches (0.0%)
+  Food                : 1 searches (0.0%)
+  Health              : 1 searches (0.0%)
+  Music               : 1 searches (0.0%)
+  Social Media        : 1 searches (0.0%)
+
+
+================================================================================
+ENTITY ANALYSIS
+================================================================================
+
+TOP 100 ENTITIES BY MENTION COUNT:
+
+1. London
+   Mentions: 944
+   User weight: 1.0000
+   Top categories: Work_Career(1.00), Location(1.00), Travel(1.00)
+
+2. UK
+   Mentions: 670
+   User weight: 0.9985
+   Top categories: Work_Career(1.00), News_Politics(1.00), Location(1.00)
+
+3. Lucknow
+   Mentions: 428
+   User weight: 0.3561
+   Top categories: Location(1.00), Travel(1.00), Daily_Life(1.00)
+
+4. India
+   Mentions: 391
+   User weight: 0.9950
+   Top categories: Life_Transitions(1.00), Location(1.00), Technology(1.00)
+
+5. Canary Wharf
+   Mentions: 389
+   User weight: 0.9975
+   Top categories: Location(1.00), Entertainment(1.00), Work_Career(1.00)
+
+6. Python
+   Mentions: 357
+   User weight: 0.1183
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(0.70)
+
+7. Viewed
+   Mentions: 236
+   User weight: 0.9985
+   Top categories: Location(1.00), Work_Career(1.00), Technology(1.00)
+
+8. Otta
+   Mentions: 228
+   User weight: 0.6302
+   Top categories: Entertainment(1.00), Technology(1.00), Location(1.00)
+
+9. Barclays
+   Mentions: 192
+   User weight: 0.2211
+   Top categories: Work_Career(1.00), News_Politics(1.00), Location(1.00)
+
+10. Google
+   Mentions: 186
+   User weight: 1.0000
+   Top categories: Technology(1.00), Work_Career(1.00), News_Politics(1.00)
+
+11. SQL
+   Mentions: 185
+   User weight: 0.1440
+   Top categories: Technology(1.00), Work_Career(1.00)
+
+12. Cleo
+   Mentions: 181
+   User weight: 0.9975
+   Top categories: Work_Career(1.00), Life_Transitions(1.00), Location(1.00)
+
+13. Excel
+   Mentions: 166
+   User weight: 0.1500
+   Top categories: Work_Career(1.00), Technology(1.00), Location(0.60)
+
+14. Mumbai
+   Mentions: 151
+   User weight: 0.3053
+   Top categories: Travel(1.00), Location(1.00), Daily_Life(1.00)
+
+15. Search
+   Mentions: 148
+   User weight: 1.0000
+   Top categories: Technology(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+16. Stack Overflow
+   Mentions: 146
+   User weight: 0.3172
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(0.80)
+
+17. LinkedIn
+   Mentions: 139
+   User weight: 0.9930
+   Top categories: Work_Career(1.00), Technology(1.00), Location(1.00)
+
+18. pandas
+   Mentions: 136
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(0.25)
+
+19. Calories
+   Mentions: 133
+   User weight: 0.4639
+   Top categories: Daily_Life(1.00), Technology(0.84), Work_Career(0.77)
+
+20. Notification
+   Mentions: 132
+   User weight: 1.0000
+   Top categories: Daily_Life(1.00), Technology(1.00), Work_Career(1.00)
+
+21. Ukraine
+   Mentions: 130
+   User weight: 0.0100
+   Top categories: Life_Transitions(1.00), Location(1.00), News_Politics(1.00)
+
+22. Apple
+   Mentions: 129
+   User weight: 0.9900
+   Top categories: Technology(1.00), Work_Career(1.00), Entertainment(1.00)
+
+23. Revolut
+   Mentions: 128
+   User weight: 0.0100
+   Top categories: Technology(1.00), Work_Career(1.00), Location(1.00)
+
+24. Swift
+   Mentions: 127
+   User weight: 0.4463
+   Top categories: Technology(1.00), Work_Career(1.00), Entertainment(0.52)
+
+25. Mac
+   Mentions: 124
+   User weight: 0.3948
+   Top categories: Technology(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+26. GOV.UK
+   Mentions: 119
+   User weight: 0.8568
+   Top categories: Location(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+27. NumPy
+   Mentions: 119
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00), News_Politics(0.36)
+
+28. iPhone
+   Mentions: 118
+   User weight: 0.9627
+   Top categories: Technology(1.00), Entertainment(1.00), Work_Career(1.00)
+
+29. Fintech
+   Mentions: 118
+   User weight: 0.9130
+   Top categories: Technology(1.00), Location(1.00), Work_Career(1.00)
+
+30. Weather
+   Mentions: 113
+   User weight: 0.8749
+   Top categories: Daily_Life(1.00), Location(1.00), Travel(1.00)
+
+31. Wikipedia
+   Mentions: 110
+   User weight: 1.0000
+   Top categories: News_Politics(1.00), Entertainment(1.00), Technology(1.00)
+
+32. AI
+   Mentions: 110
+   User weight: 1.0000
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(1.00)
+
+33. Paris
+   Mentions: 110
+   User weight: 0.7984
+   Top categories: Travel(1.00), Location(1.00), Fashion(1.00)
+
+34. Stata
+   Mentions: 109
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00)
+
+35. Home
+   Mentions: 107
+   User weight: 0.9560
+   Top categories: Location(1.00), Entertainment(1.00), Daily_Life(1.00)
+
+36. NHS
+   Mentions: 103
+   User weight: 0.1619
+   Top categories: Work_Career(1.00), News_Politics(1.00), Daily_Life(1.00)
+
+37. Bangalore
+   Mentions: 101
+   User weight: 1.0000
+   Top categories: Location(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+38. Delhi
+   Mentions: 101
+   User weight: 0.5356
+   Top categories: Life_Transitions(1.00), News_Politics(1.00), Travel(1.00)
+
+39. German
+   Mentions: 99
+   User weight: 0.2012
+   Top categories: Technology(1.00), News_Politics(1.00), Location(1.00)
+
+40. Things To Do
+   Mentions: 98
+   User weight: 0.5229
+   Top categories: Location(1.00), Entertainment(1.00), Travel(1.00)
+
+41. Women
+   Mentions: 97
+   User weight: 0.7565
+   Top categories: Life_Transitions(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+42. Near Me
+   Mentions: 96
+   User weight: 0.7241
+   Top categories: Daily_Life(1.00), Location(1.00), Entertainment(0.84)
+
+43. Login
+   Mentions: 94
+   User weight: 0.8604
+   Top categories: Technology(1.00), Work_Career(1.00), Location(1.00)
+
+44. EU Settlement Scheme
+   Mentions: 93
+   User weight: 0.7479
+   Top categories: Life_Transitions(1.00), Work_Career(1.00), News_Politics(1.00)
+
+45. SwiftUI
+   Mentions: 92
+   User weight: 0.2275
+   Top categories: Technology(1.00), Work_Career(1.00), Entertainment(0.45)
+
+46. Crunchbase
+   Mentions: 89
+   User weight: 0.9930
+   Top categories: Work_Career(1.00), News_Politics(1.00), Technology(1.00)
+
+47. Restaurants
+   Mentions: 88
+   User weight: 0.8791
+   Top categories: Daily_Life(1.00), Location(1.00), Travel(1.00)
+
+48. Facebook
+   Mentions: 87
+   User weight: 0.7509
+   Top categories: Technology(1.00), Work_Career(1.00), Entertainment(1.00)
+
+49. Health
+   Mentions: 87
+   User weight: 0.9792
+   Top categories: Work_Career(1.00), Daily_Life(1.00), Life_Transitions(1.00)
+
+50. GitHub
+   Mentions: 86
+   User weight: 0.9296
+   Top categories: Work_Career(1.00), Technology(1.00), News_Politics(0.87)
+
+51. Shoreditch
+   Mentions: 85
+   User weight: 0.9960
+   Top categories: Location(1.00), Entertainment(1.00), Daily_Life(1.00)
+
+52. Used
+   Mentions: 85
+   User weight: 0.7279
+   Top categories: Technology(1.00), Daily_Life(1.00), Work_Career(1.00)
+
+53. YouTube
+   Mentions: 84
+   User weight: 0.4622
+   Top categories: Entertainment(1.00), Technology(1.00), News_Politics(1.00)
+
+54. Xcode
+   Mentions: 82
+   User weight: 0.3314
+   Top categories: Work_Career(1.00), Technology(1.00)
+
+55. Amazon
+   Mentions: 80
+   User weight: 0.7432
+   Top categories: Work_Career(1.00), Technology(1.00), Fashion(1.00)
+
+56. IOS
+   Mentions: 80
+   User weight: 0.5781
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(0.30)
+
+57. United Kingdom
+   Mentions: 79
+   User weight: 0.9380
+   Top categories: Entertainment(1.00), Location(1.00), Work_Career(1.00)
+
+58. Instagram
+   Mentions: 79
+   User weight: 0.9257
+   Top categories: Entertainment(1.00), Technology(1.00), Work_Career(1.00)
+
+59. C
+   Mentions: 77
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00), Daily_Life(0.28)
+
+60. Figma
+   Mentions: 77
+   User weight: 0.5538
+   Top categories: Technology(1.00), Entertainment(1.00), Work_Career(1.00)
+
+61. US
+   Mentions: 76
+   User weight: 0.9130
+   Top categories: Work_Career(1.00), Location(1.00), News_Politics(1.00)
+
+62. English
+   Mentions: 73
+   User weight: 0.0978
+   Top categories: Entertainment(1.00), Location(1.00), Work_Career(1.00)
+
+63. American Express
+   Mentions: 72
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00), Travel(1.00)
+
+64. Israel
+   Mentions: 70
+   User weight: 1.0000
+   Top categories: News_Politics(1.00), Life_Transitions(1.00), Location(1.00)
+
+65. Entrepreneur First
+   Mentions: 70
+   User weight: 0.9719
+   Top categories: Work_Career(1.00), Technology(1.00), News_Politics(1.00)
+
+66. Italy
+   Mentions: 69
+   User weight: 0.7245
+   Top categories: Travel(1.00), Location(1.00), Work_Career(1.00)
+
+67. GBP
+   Mentions: 67
+   User weight: 0.2886
+   Top categories: Location(1.00), News_Politics(1.00), Technology(1.00)
+
+68. Ikea
+   Mentions: 66
+   User weight: 0.2396
+   Top categories: Location(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+69. Europe
+   Mentions: 64
+   User weight: 0.9985
+   Top categories: News_Politics(1.00), Location(1.00), Travel(1.00)
+
+70. Covent Garden
+   Mentions: 64
+   User weight: 0.9560
+   Top categories: Entertainment(1.00), Location(1.00), Daily_Life(1.00)
+
+71. Virgin Active
+   Mentions: 63
+   User weight: 0.9827
+   Top categories: Location(1.00), Work_Career(1.00), Entertainment(1.00)
+
+72. Calculator
+   Mentions: 63
+   User weight: 0.2441
+   Top categories: Technology(1.00), Work_Career(1.00), Daily_Life(0.75)
+
+73. King's College London
+   Mentions: 62
+   User weight: 0.4051
+   Top categories: Work_Career(1.00), Location(1.00), Technology(0.51)
+
+74. Annual Report
+   Mentions: 62
+   User weight: 0.7663
+   Top categories: Work_Career(1.00), News_Politics(1.00), Technology(1.00)
+
+75. Careers
+   Mentions: 60
+   User weight: 0.4606
+   Top categories: Work_Career(1.00), Technology(1.00), Life_Transitions(0.48)
+
+76. Netflix
+   Mentions: 59
+   User weight: 0.2474
+   Top categories: Entertainment(1.00), Technology(1.00), Work_Career(1.00)
+
+77. BBC
+   Mentions: 59
+   User weight: 0.4524
+   Top categories: Entertainment(1.00), News_Politics(1.00), Technology(0.74)
+
+78. Glassdoor
+   Mentions: 59
+   User weight: 0.2141
+   Top categories: Work_Career(1.00), News_Politics(1.00), Technology(1.00)
+
+79. TensorFlow
+   Mentions: 59
+   User weight: 0.0100
+   Top categories: Technology(1.00), Work_Career(1.00), News_Politics(0.28)
+
+80. Gmail
+   Mentions: 58
+   User weight: 0.2876
+   Top categories: Technology(1.00), Work_Career(1.00), Location(0.34)
+
+81. Schengen Visa
+   Mentions: 58
+   User weight: 0.2573
+   Top categories: Travel(1.00), Work_Career(1.00), Location(1.00)
+
+82. COVID-19
+   Mentions: 58
+   User weight: 0.0100
+   Top categories: News_Politics(1.00), Work_Career(1.00), Life_Transitions(1.00)
+
+83. Russia
+   Mentions: 58
+   User weight: 0.0512
+   Top categories: News_Politics(1.00), Location(1.00), Life_Transitions(1.00)
+
+84. Chime
+   Mentions: 58
+   User weight: 0.3753
+   Top categories: Work_Career(1.00), Technology(1.00), News_Politics(1.00)
+
+85. Streamlit
+   Mentions: 57
+   User weight: 0.1055
+   Top categories: Technology(1.00), Work_Career(1.00), Entertainment(0.56)
+
+86. Used Search
+   Mentions: 56
+   User weight: 0.4267
+   Top categories: Work_Career(1.00), Technology(1.00), Daily_Life(1.00)
+
+87. Plaid
+   Mentions: 56
+   User weight: 0.6813
+   Top categories: Work_Career(1.00), Technology(1.00), News_Politics(0.85)
+
+88. Job in Tech
+   Mentions: 56
+   User weight: 0.4847
+   Top categories: Work_Career(1.00), Technology(1.00)
+
+89. Ooty
+   Mentions: 56
+   User weight: 0.4975
+   Top categories: Location(1.00), Travel(1.00), Daily_Life(0.53)
+
+90. Boots
+   Mentions: 54
+   User weight: 0.0100
+   Top categories: Location(1.00), Work_Career(1.00), Daily_Life(1.00)
+
+91. React Native
+   Mentions: 54
+   User weight: 0.0100
+   Top categories: Technology(1.00), Work_Career(1.00), Fashion(0.33)
+
+92. Medium
+   Mentions: 53
+   User weight: 0.9985
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(1.00)
+
+93. Notion
+   Mentions: 53
+   User weight: 0.3707
+   Top categories: Work_Career(1.00), Technology(1.00), Entertainment(0.31)
+
+94. Ecommerce
+   Mentions: 52
+   User weight: 0.3639
+   Top categories: Technology(1.00), Work_Career(1.00), News_Politics(0.88)
+
+95. Movie
+   Mentions: 51
+   User weight: 0.7522
+   Top categories: Entertainment(1.00), Technology(0.36), Travel(0.21)
+
+96. News
+   Mentions: 51
+   User weight: 0.8086
+   Top categories: Work_Career(1.00), News_Politics(1.00), Technology(1.00)
+
+97. Time
+   Mentions: 51
+   User weight: 0.9422
+   Top categories: Daily_Life(1.00), Work_Career(1.00), Technology(1.00)
+
+98. Settled Status
+   Mentions: 51
+   User weight: 0.7479
+   Top categories: Life_Transitions(1.00), Work_Career(1.00), Location(1.00)
+
+99. Pandas DataFrame
+   Mentions: 51
+   User weight: 0.0100
+   Top categories: Work_Career(1.00), Technology(1.00)
+
+100. Height
+   Mentions: 49
+   User weight: 0.1659
+   Top categories: Location(1.00), Work_Career(1.00), Entertainment(1.00)
+
+
+================================================================================
+TEMPORAL PATTERNS
+================================================================================
+
+TIMESPAN:
+  First search: 2017-06-08 16:42:55
+  Last search: 2024-06-23 17:08:38
+  Total days: 2,572
+  Total years: 7.05
+
+SEARCHES PER YEAR:
+  2017: 1,191
+  2018: 5,262
+  2019: 3,087
+  2020: 3,961
+  2021: 9,335
+  2022: 9,586
+  2023: 6,126
+  2024: 3,744
+
+SEARCHES PER MONTH (last 12 months):
+  2023-07: 559
+  2023-08: 341
+  2023-09: 431
+  2023-10: 555
+  2023-11: 441
+  2023-12: 433
+  2024-01: 1,194
+  2024-02: 1,156
+  2024-03: 572
+  2024-04: 210
+  2024-05: 374
+  2024-06: 238
+
+SEARCHES BY HOUR OF DAY:
+  00:00 |   284 ██
+  01:00 |    97 
+  02:00 |    81 
+  03:00 |    70 
+  04:00 |   172 █
+  05:00 |   678 ██████
+  06:00 | 1,694 ████████████████
+  07:00 | 2,285 ██████████████████████
+  08:00 | 2,696 ██████████████████████████
+  09:00 | 2,629 ██████████████████████████
+  10:00 | 2,715 ███████████████████████████
+  11:00 | 2,564 █████████████████████████
+  12:00 | 2,584 █████████████████████████
+  13:00 | 2,630 ██████████████████████████
+  14:00 | 2,808 ████████████████████████████
+  15:00 | 2,582 █████████████████████████
+  16:00 | 2,370 ███████████████████████
+  17:00 | 1,975 ███████████████████
+  18:00 | 1,902 ███████████████████
+  19:00 | 2,168 █████████████████████
+  20:00 | 2,641 ██████████████████████████
+  21:00 | 2,280 ██████████████████████
+  22:00 | 1,552 ███████████████
+  23:00 |   835 ████████
+
+SEARCHES BY DAY OF WEEK:
+  Monday   : 5,771 (13.6%)
+  Tuesday  : 6,238 (14.7%)
+  Wednesday: 5,414 (12.8%)
+  Thursday : 5,182 (12.3%)
+  Friday   : 5,361 (12.7%)
+  Saturday : 6,913 (16.3%)
+  Sunday   : 7,413 (17.5%)
+
+
+================================================================================
+SUB-PERSONA COMMUNITIES
+================================================================================
+
+DETECTED 28127 COMMUNITIES:
+
+COMMUNITY 1:
+  Size: 532 entities
+  Total mentions: 6,767
+  Top categories: Location(488), Travel(391), Entertainment(257), Daily_Life(251), Work_Career(189)
+  Top entities:
+    - London (944 mentions)
+    - Lucknow (428 mentions)
+    - Weather (113 mentions)
+    - Delhi (101 mentions)
+    - Bangalore (101 mentions)
+    - Things To Do (98 mentions)
+    - Near Me (96 mentions)
+    - Restaurants (88 mentions)
+    - Shoreditch (85 mentions)
+    - Covent Garden (64 mentions)
+
+COMMUNITY 2:
+  Size: 525 entities
+  Total mentions: 6,348
+  Top categories: Technology(492), Work_Career(466), News_Politics(116), Entertainment(103), Daily_Life(89)
+  Top entities:
+    - Python (357 mentions)
+    - Viewed (236 mentions)
+    - SQL (185 mentions)
+    - Excel (166 mentions)
+    - pandas (136 mentions)
+    - Swift (127 mentions)
+    - Mac (124 mentions)
+    - NumPy (119 mentions)
+    - AI (110 mentions)
+    - Stata (109 mentions)
+
+COMMUNITY 3:
+  Size: 322 entities
+  Total mentions: 4,111
+  Top categories: Work_Career(216), Location(212), Technology(170), News_Politics(120), Travel(114)
+  Top entities:
+    - UK (670 mentions)
+    - India (391 mentions)
+    - Mumbai (151 mentions)
+    - Stack Overflow (146 mentions)
+    - Fintech (118 mentions)
+    - IOS (80 mentions)
+    - Schengen Visa (58 mentions)
+    - COVID-19 (58 mentions)
+    - Chime (58 mentions)
+    - Germany (40 mentions)
+
+COMMUNITY 4:
+  Size: 209 entities
+  Total mentions: 2,531
+  Top categories: Work_Career(178), Technology(173), News_Politics(126), Daily_Life(67), Location(61)
+  Top entities:
+    - Revolut (128 mentions)
+    - GBP (67 mentions)
+    - Ikea (66 mentions)
+    - Calculator (63 mentions)
+    - Annual Report (62 mentions)
+    - Price (46 mentions)
+    - Blackrock (43 mentions)
+    - Share Price (42 mentions)
+    - BAE Systems (42 mentions)
+    - INR (36 mentions)
+
+COMMUNITY 5:
+  Size: 147 entities
+  Total mentions: 1,712
+  Top categories: Work_Career(122), Technology(112), News_Politics(80), Location(59), Daily_Life(44)
+  Top entities:
+    - Cleo (181 mentions)
+    - Crunchbase (89 mentions)
+    - US (76 mentions)
+    - Funding (49 mentions)
+    - Gousto (46 mentions)
+    - Data (45 mentions)
+    - England (41 mentions)
+    - Company Profile (38 mentions)
+    - Sale (35 mentions)
+    - Metformin (33 mentions)
+
+COMMUNITY 6:
+  Size: 131 entities
+  Total mentions: 1,517
+  Top categories: Location(112), Work_Career(89), Daily_Life(66), Travel(49), Entertainment(48)
+  Top entities:
+    - Canary Wharf (389 mentions)
+    - Greenwich (45 mentions)
+    - Waitrose (43 mentions)
+    - WeWork (40 mentions)
+    - Pan Peninsula (37 mentions)
+    - Beautyfini (35 mentions)
+    - Inches (25 mentions)
+    - Postcode (20 mentions)
+    - John Lewis (19 mentions)
+    - Membership (18 mentions)
+
+COMMUNITY 7:
+  Size: 130 entities
+  Total mentions: 1,433
+  Top categories: Work_Career(118), Technology(118), News_Politics(61), Location(40), Life_Transitions(36)
+  Top entities:
+    - LinkedIn (139 mentions)
+    - GitHub (86 mentions)
+    - Plaid (56 mentions)
+    - OpenAI (40 mentions)
+    - API (38 mentions)
+    - Finance (35 mentions)
+    - Pricing (30 mentions)
+    - Y Combinator (26 mentions)
+    - The Fold (26 mentions)
+    - Sign Up (25 mentions)
+
+COMMUNITY 8:
+  Size: 127 entities
+  Total mentions: 1,206
+  Top categories: Daily_Life(83), Work_Career(74), News_Politics(43), Life_Transitions(43), Entertainment(33)
+  Top entities:
+    - NHS (103 mentions)
+    - Symptoms (47 mentions)
+    - Recipe (45 mentions)
+    - Causes (40 mentions)
+    - Food (37 mentions)
+    - Back Pain (30 mentions)
+    - Treatment (28 mentions)
+    - Cervical Cancer (24 mentions)
+    - Zoe (24 mentions)
+    - Birth Control (23 mentions)
+
+COMMUNITY 9:
+  Size: 120 entities
+  Total mentions: 1,153
+  Top categories: Technology(104), Work_Career(79), Entertainment(61), News_Politics(43), Daily_Life(34)
+  Top entities:
+    - iPhone (118 mentions)
+    - YouTube (84 mentions)
+    - Figma (77 mentions)
+    - Email (41 mentions)
+    - iPad (39 mentions)
+    - O2 (32 mentions)
+    - Macbook Pro (28 mentions)
+    - AirPods (28 mentions)
+    - MacBook (21 mentions)
+    - Images (20 mentions)
+
+COMMUNITY 10:
+  Size: 89 entities
+  Total mentions: 961
+  Top categories: Work_Career(72), Technology(56), Location(48), News_Politics(35), Daily_Life(24)
+  Top entities:
+    - Barclays (192 mentions)
+    - pdf (40 mentions)
+    - Adobe (30 mentions)
+    - Online (27 mentions)
+    - OneNote (27 mentions)
+    - Island Health (26 mentions)
+    - Asda (24 mentions)
+    - WhatsApp (23 mentions)
+    - TSB (19 mentions)
+    - Interest Rate (17 mentions)
+
+COMMUNITY 11:
+  Size: 85 entities
+  Total mentions: 1,188
+  Top categories: News_Politics(65), Work_Career(49), Location(46), Life_Transitions(45), Technology(37)
+  Top entities:
+    - Ukraine (130 mentions)
+    - German (99 mentions)
+    - English (73 mentions)
+    - Israel (70 mentions)
+    - BBC (59 mentions)
+    - Russia (58 mentions)
+    - News (51 mentions)
+    - Lyrics (37 mentions)
+    - BBC News (29 mentions)
+    - Vitality (28 mentions)
+
+COMMUNITY 12:
+  Size: 80 entities
+  Total mentions: 832
+  Top categories: Work_Career(69), Technology(68), Entertainment(33), News_Politics(30), Location(26)
+  Top entities:
+    - Apple (129 mentions)
+    - Instagram (79 mentions)
+    - Business (30 mentions)
+    - Investment (30 mentions)
+    - App Store (27 mentions)
+    - Brigit (24 mentions)
+    - Slack (20 mentions)
+    - MacOS (18 mentions)
+    - British Vogue (17 mentions)
+    - Keras (16 mentions)
+
+COMMUNITY 13:
+  Size: 72 entities
+  Total mentions: 902
+  Top categories: Work_Career(66), Technology(54), Location(43), News_Politics(26), Life_Transitions(24)
+  Top entities:
+    - Home (107 mentions)
+    - EU Settlement Scheme (93 mentions)
+    - Entrepreneur First (70 mentions)
+    - Glassdoor (59 mentions)
+    - Settled Status (51 mentions)
+    - Lendable (49 mentions)
+    - Pre-Settled Status (24 mentions)
+    - Website (22 mentions)
+    - Iwoca (21 mentions)
+    - Commercial Associate (16 mentions)
+
+COMMUNITY 14:
+  Size: 71 entities
+  Total mentions: 681
+  Top categories: Work_Career(55), Fashion(44), Technology(35), News_Politics(28), Entertainment(24)
+  Top entities:
+    - Women (97 mentions)
+    - Burberry (30 mentions)
+    - Mindful Chef (27 mentions)
+    - Hermes (22 mentions)
+    - Ralph Lauren (22 mentions)
+    - Store (19 mentions)
+    - Selfridges (17 mentions)
+    - HPV (17 mentions)
+    - Calvin Klein (16 mentions)
+    - Bella Hadid (15 mentions)
+
+COMMUNITY 15:
+  Size: 70 entities
+  Total mentions: 802
+  Top categories: Work_Career(45), Travel(43), Location(40), Technology(29), Entertainment(26)
+  Top entities:
+    - American Express (72 mentions)
+    - Italy (69 mentions)
+    - Europe (64 mentions)
+    - British Airways (48 mentions)
+    - Flights (47 mentions)
+    - Shoes (29 mentions)
+    - IndiGo (28 mentions)
+    - Eurostar (25 mentions)
+    - New Look (23 mentions)
+    - Heels (21 mentions)
+
+COMMUNITY 16:
+  Size: 69 entities
+  Total mentions: 757
+  Top categories: Work_Career(52), Technology(46), News_Politics(34), Location(28), Entertainment(28)
+  Top entities:
+    - SwiftUI (92 mentions)
+    - United Kingdom (79 mentions)
+    - Kate Middleton (40 mentions)
+    - Reddit (37 mentions)
+    - Map (33 mentions)
+    - Documentation (28 mentions)
+    - Cancer (25 mentions)
+    - Company (21 mentions)
+    - Carrd (20 mentions)
+    - Sweden (16 mentions)
+
+COMMUNITY 17:
+  Size: 66 entities
+  Total mentions: 645
+  Top categories: Daily_Life(38), Entertainment(35), Location(29), Technology(18), Work_Career(18)
+  Top entities:
+    - Calories (133 mentions)
+    - Menu (42 mentions)
+    - Leon (39 mentions)
+    - Tesco (32 mentions)
+    - Mmol (16 mentions)
+    - Sushi (16 mentions)
+    - Mg/dl (15 mentions)
+    - Dinner (15 mentions)
+    - Pure (14 mentions)
+    - Chicken (13 mentions)
+
+COMMUNITY 18:
+  Size: 62 entities
+  Total mentions: 573
+  Top categories: Work_Career(49), Entertainment(42), News_Politics(34), Technology(31), Life_Transitions(31)
+  Top entities:
+    - Medium (53 mentions)
+    - Height (49 mentions)
+    - Elon Musk (37 mentions)
+    - Heart Rate (29 mentions)
+    - Age (25 mentions)
+    - VO2 Max (21 mentions)
+    - Alex Epstein (16 mentions)
+    - Weight (15 mentions)
+    - X (11 mentions)
+    - Wife (11 mentions)
+
+COMMUNITY 19:
+  Size: 55 entities
+  Total mentions: 587
+  Top categories: Work_Career(49), Technology(37), Location(33), Travel(22), News_Politics(19)
+  Top entities:
+    - Login (94 mentions)
+    - France (45 mentions)
+    - Jump Desktop (45 mentions)
+    - BA (21 mentions)
+    - Stripe (20 mentions)
+    - Defined (20 mentions)
+    - Appointment (19 mentions)
+    - Boeing (15 mentions)
+    - TLS (15 mentions)
+    - Todoist (15 mentions)
+
+COMMUNITY 20:
+  Size: 53 entities
+  Total mentions: 550
+  Top categories: Technology(49), Work_Career(46), Entertainment(23), News_Politics(19), Daily_Life(15)
+  Top entities:
+    - App (44 mentions)
+    - Duolingo (30 mentions)
+    - Widget (27 mentions)
+    - Review (27 mentions)
+    - Nutmeg (21 mentions)
+    - Gym (21 mentions)
+    - Logo (20 mentions)
+    - Software (20 mentions)
+    - Users (17 mentions)
+    - Running (17 mentions)
+
+
+================================================================================
+POTENTIAL TRANSITIONS (σ=1.0)
+================================================================================
+
+Threshold: 5.9817 (mean + 1.0σ)
+
+FOUND 49 POTENTIAL TRANSITION POINTS:
+
+GROUPED INTO 10 DISTINCT EVENTS:
+
+EVENT 1:
+  Period: 2017-06-11 to 2017-06-19
+  Searches: 25 to 94
+  Avg surprise: 6.3609
+  Peak surprise: 6.7732
+  Dominant categories: Work_Career(4.7), Technology(2.8), Location(2.3)
+  Sample queries:
+    - Skyscanner: Compare Cheap Flights & Book Airline Tickets to ...
+    - goldman sachs graduate intake
+    - goldman sachs emea graduate intake
+    - evercore
+    - jp morgan networking event london
+
+EVENT 2:
+  Period: 2017-09-08 to 2017-09-08
+  Searches: 293 to 295
+  Avg surprise: 6.3273
+  Peak surprise: 6.3719
+  Dominant categories: Entertainment(1.8), Technology(1.0), Work_Career(0.2)
+  Sample queries:
+    - if i cancel my audible membership will i lose my credits
+    - the girl with the dragon tattoo film
+    - the girl with the dragon tattoo book
+
+EVENT 3:
+  Period: 2018-02-28 to 2018-02-28
+  Searches: 2,097 to 2,099
+  Avg surprise: 6.0502
+  Peak surprise: 6.0558
+  Dominant categories: Location(0.7), Work_Career(0.6), News_Politics(0.4)
+  Sample queries:
+    - UK firms say 'the hard work on Brexit starts now' - as it happened ...
+    - gbp to eur
+
+EVENT 4:
+  Period: 2018-04-22 to 2018-04-22
+  Searches: 3,179 to 3,181
+  Avg surprise: 6.1067
+  Peak surprise: 6.1639
+  Dominant categories: Fashion(0.0), Travel(0.0), Daily_Life(0.0)
+  Sample queries:
+    - small swing chair for balcony
+    - small swing chair for balcony
+    - b&q
+
+EVENT 5:
+  Period: 2018-05-01 to 2018-05-01
+  Searches: 3,342 to 3,358
+  Avg surprise: 6.3044
+  Peak surprise: 6.5224
+  Dominant categories: Technology(2.7), Daily_Life(2.4), Work_Career(2.4)
+  Sample queries:
+    - reusable branded coffee cups bulk
+    - uk vat
+    - branded sports water bottles uk
+    - branded reusable coffee cups uk
+    - flubit logo
+
+EVENT 6:
+  Period: 2018-06-04 to 2018-06-04
+  Searches: 4,139 to 4,140
+  Avg surprise: 6.4123
+  Peak surprise: 6.4286
+  Dominant categories: Travel(1.0), Location(0.7), News_Politics(0.3)
+  Sample queries:
+    - airbnb
+    - how big is iceland
+
+EVENT 7:
+  Period: 2019-08-10 to 2019-08-10
+  Searches: 8,262 to 8,264
+  Avg surprise: 6.1432
+  Peak surprise: 6.1607
+  Dominant categories: Technology(1.0), Work_Career(0.7), Life_Transitions(0.3)
+  Sample queries:
+    - scientific calculator
+    - Self Assessment tax returns: Registering and sending a return - GOV ...
+
+EVENT 8:
+  Period: 2020-09-05 to 2020-09-05
+  Searches: 12,362 to 12,364
+  Avg surprise: 6.2901
+  Peak surprise: 6.3067
+  Dominant categories: Work_Career(2.0), Entertainment(1.0), Fashion(0.0)
+  Sample queries:
+    - This Is the Real Reason 'This Is Us' Star Justin Hartley Blindsided ...
+    - self employed mortgage on losses
+    - Mortgages For Company Directors & Business Owners
+
+EVENT 9:
+  Period: 2022-06-17 to 2022-06-17
+  Searches: 27,599 to 27,603
+  Avg surprise: 6.3093
+  Peak surprise: 6.3439
+  Dominant categories: Technology(3.6), Work_Career(1.0), Life_Transitions(0.4)
+  Sample queries:
+    - HTML Color Groups - W3Schools
+    - update chrome
+    - Update Google Chrome - Computer - Google Chrome Help
+    - how to move a project readme.md to the very top of repo
+    - github - How to place readme.md on the top of the page - Stack ...
+
+EVENT 10:
+  Period: 2023-03-02 to 2023-03-02
+  Searches: 33,562 to 33,563
+  Avg surprise: 6.0548
+  Peak surprise: 6.0628
+  Dominant categories: Location(1.2), Travel(0.4), Daily_Life(0.4)
+  Sample queries:
+    - marudhar express running time
+    - 14854 running status
+
+
+================================================================================
+POTENTIAL TRANSITIONS (σ=0.8)
+================================================================================
+
+Threshold: 5.2691 (mean + 0.8σ)
+
+FOUND 272 POTENTIAL TRANSITION POINTS:
+
+GROUPED INTO 28 DISTINCT EVENTS:
+
+EVENT 1:
+  Period: 2017-06-11 to 2017-07-21
+  Searches: 25 to 167
+  Avg surprise: 5.7842
+  Peak surprise: 6.7732
+  Dominant categories: Work_Career(13.2), Location(6.0), Technology(5.8)
+  Sample queries:
+    - Skyscanner: Compare Cheap Flights & Book Airline Tickets to ...
+    - goldman sachs graduate intake
+    - goldman sachs emea graduate intake
+    - evercore
+    - jp morgan networking event london
+
+EVENT 2:
+  Period: 2017-09-03 to 2017-09-09
+  Searches: 280 to 296
+  Avg surprise: 5.7374
+  Peak surprise: 6.3719
+  Dominant categories: Technology(2.7), Entertainment(2.7), Work_Career(2.0)
+  Sample queries:
+    - are grade 2 knee ligament tears dangerous
+    - dexi. io address
+    - level 39 address
+    - laundry republic
+    - LaundryRepublic: Award-Winning Laundry & Dry Cleaning London
+
+EVENT 3:
+  Period: 2017-09-16 to 2017-09-16
+  Searches: 402 to 410
+  Avg surprise: 5.3695
+  Peak surprise: 5.4301
+  Dominant categories: Location(2.2), News_Politics(1.0), Life_Transitions(0.5)
+  Sample queries:
+    - people from assam
+    - people from uttarakhand
+    - people from chennai
+    - punjabi people
+    - soviet union
+
+EVENT 4:
+  Period: 2018-01-02 to 2018-01-03
+  Searches: 1,233 to 1,246
+  Avg surprise: 5.5100
+  Peak surprise: 5.6644
+  Dominant categories: News_Politics(6.2), Entertainment(2.4), Work_Career(1.8)
+  Sample queries:
+    - rudra kapoor tennis
+    - rudra kapoor tennis
+    - What We've Learned from the Financial Crisis
+    - drive
+    - Personal Cloud Storage & File Sharing Platform - Google
+
+EVENT 5:
+  Period: 2018-01-24 to 2018-01-24
+  Searches: 1,441 to 1,442
+  Avg surprise: 5.3691
+  Peak surprise: 5.3729
+  Dominant categories: Work_Career(1.6), Technology(0.4), Fashion(0.0)
+  Sample queries:
+    - linked
+    - LinkedIn: Log In or Sign Up
+
+EVENT 6:
+  Period: 2018-02-05 to 2018-02-05
+  Searches: 1,620 to 1,621
+  Avg surprise: 5.4254
+  Peak surprise: 5.5424
+  Dominant categories: Work_Career(1.0), Location(0.7), Travel(0.3)
+  Sample queries:
+    - anglesea south kensington
+    - numen capital
+
+EVENT 7:
+  Period: 2018-02-28 to 2018-02-28
+  Searches: 2,092 to 2,108
+  Avg surprise: 5.5929
+  Peak surprise: 6.0558
+  Dominant categories: Location(3.6), Work_Career(3.3), News_Politics(3.2)
+  Sample queries:
+    - outliers
+    - kcl email
+    - firm investment after brexit
+    - Brexit Uncertainty Has Firms Delaying U.K. Investment Decisions ...
+    - pound after brexit deal
+
+EVENT 8:
+  Period: 2018-04-19 to 2018-04-25
+  Searches: 3,106 to 3,232
+  Avg surprise: 5.5206
+  Peak surprise: 6.1639
+  Dominant categories: Travel(6.8), Work_Career(6.4), Technology(5.8)
+  Sample queries:
+    - radiohead strand
+    - best healthy brunch london
+    - 10 best healthy breakfasts in London - Healthista
+    - vital ingredient calories
+    - vital pesto dressing calories
+
+EVENT 9:
+  Period: 2018-04-30 to 2018-05-01
+  Searches: 3,338 to 3,361
+  Avg surprise: 6.0445
+  Peak surprise: 6.5224
+  Dominant categories: Fashion(4.6), Entertainment(3.9), Daily_Life(3.3)
+  Sample queries:
+    - 4k shows on netflix
+    - man who taught his dog hitler salute
+    - Scottish man arrested for teaching dog a Nazi salute | The Times of ...
+    - reusable branded coffee cups
+    - reusable branded coffee cups bulk
+
+EVENT 10:
+  Period: 2018-05-10 to 2018-05-11
+  Searches: 3,555 to 3,559
+  Avg surprise: 5.3425
+  Peak surprise: 5.3641
+  Dominant categories: Technology(2.4), Work_Career(1.8), Entertainment(0.4)
+  Sample queries:
+    - segway
+    - a better lemonade stand
+    - Digital Product Newsletter - A Better Lemonade Stand
+    - best ecommerce blogs
+    - Practical eCommerce
+
+EVENT 11:
+  Period: 2018-06-02 to 2018-06-04
+  Searches: 4,124 to 4,144
+  Avg surprise: 5.8356
+  Peak surprise: 6.4286
+  Dominant categories: Travel(1.6), Work_Career(1.6), Entertainment(1.4)
+  Sample queries:
+    - karl pilkington
+    - THE 10 BEST Hotels in Reykjavik 2024 (from £69) - Tripadvisor
+    - airbnb
+    - how big is iceland
+    - tier 2 visa
+
+EVENT 12:
+  Period: 2018-07-19 to 2018-07-19
+  Searches: 4,964 to 4,964
+  Avg surprise: 5.5824
+  Peak surprise: 5.5824
+  Dominant categories: Fashion(0.7), Entertainment(0.3), Travel(0.0)
+  Sample queries:
+    - Evewear - Sustainable Sleepwear for Dreamers ...
+
+EVENT 13:
+  Period: 2018-08-20 to 2018-08-20
+  Searches: 5,377 to 5,378
+  Avg surprise: 5.2702
+  Peak surprise: 5.2709
+  Dominant categories: Daily_Life(1.0), Work_Career(0.6), Technology(0.4)
+  Sample queries:
+    - Free Cash Flow: NOPAT minus Change in ... - New Constructs
+    - birley calories
+
+EVENT 14:
+  Period: 2018-10-01 to 2018-10-01
+  Searches: 5,844 to 5,844
+  Avg surprise: 5.4194
+  Peak surprise: 5.4194
+  Dominant categories: Fashion(0.0), Travel(0.0), Daily_Life(0.0)
+  Sample queries:
+    - Le Pain Quotidien Calories and Nutrition Information. Page 1
+
+EVENT 15:
+  Period: 2018-11-21 to 2018-11-22
+  Searches: 6,088 to 6,091
+  Avg surprise: 5.4263
+  Peak surprise: 5.4629
+  Dominant categories: Fashion(3.6), Location(0.4), Travel(0.0)
+  Sample queries:
+    - beige block heel pumps
+    - dorothy perkins uk
+    - mango
+    - fitted black turtleneck
+
+EVENT 16:
+  Period: 2019-08-09 to 2019-08-10
+  Searches: 8,255 to 8,267
+  Avg surprise: 5.7591
+  Peak surprise: 6.1607
+  Dominant categories: Work_Career(5.6), Technology(1.4), Fashion(1.0)
+  Sample queries:
+    - caudalie resveratrol lift
+    - caudalie resveratrol lift reviews
+    - clarins multi active nuit
+    - annuity calculator
+    - legal and general annuity calculator
+
+EVENT 17:
+  Period: 2020-08-09 to 2020-08-10
+  Searches: 11,952 to 11,955
+  Avg surprise: 5.3999
+  Peak surprise: 5.4654
+  Dominant categories: Fashion(2.0), Work_Career(1.6), Technology(0.4)
+  Sample queries:
+    - best insoles for.heels
+    - founder associate revolut
+    - space nk anti frizz
+    - hmrc account
+
+EVENT 18:
+  Period: 2020-09-04 to 2020-09-05
+  Searches: 12,360 to 12,366
+  Avg surprise: 5.7923
+  Peak surprise: 6.3067
+  Dominant categories: Work_Career(4.6), Life_Transitions(1.0), Entertainment(1.0)
+  Sample queries:
+    - what of income should mortgage borrowing be
+    - why did jason hartley file for divorce
+    - This Is the Real Reason 'This Is Us' Star Justin Hartley Blindsided ...
+    - self employed mortgage on losses
+    - Mortgages For Company Directors & Business Owners
+
+EVENT 19:
+  Period: 2020-10-09 to 2020-10-17
+  Searches: 12,889 to 12,948
+  Avg surprise: 5.4382
+  Peak surprise: 5.5521
+  Dominant categories: Fashion(3.8), Entertainment(2.4), Work_Career(2.0)
+  Sample queries:
+    - chanel luggage
+    - gucci globetrotter
+    - reset airpods pro
+    - reset airpods pro
+    - chai ki
+
+EVENT 20:
+  Period: 2020-10-30 to 2020-11-01
+  Searches: 13,070 to 13,089
+  Avg surprise: 5.5086
+  Peak surprise: 5.7238
+  Dominant categories: Travel(3.0), Entertainment(2.5), Location(2.5)
+  Sample queries:
+    - kate ferry talktalk
+    - south asian housekeeper in london
+    - part time south asian housekeeper in london
+    - zaika london michelin
+    - Viewed Zaika
+
+EVENT 21:
+  Period: 2021-04-14 to 2021-04-15
+  Searches: 15,591 to 15,604
+  Avg surprise: 5.5680
+  Peak surprise: 5.6825
+  Dominant categories: Work_Career(2.0), Entertainment(2.0), Life_Transitions(1.8)
+  Sample queries:
+    - heeled white sneakers
+    - check settled status
+    - View and prove your immigration status: get a share code - GOV.UK
+    - switch from pre settled to settled status
+    - sticks and sushi
+
+EVENT 22:
+  Period: 2021-05-08 to 2021-05-08
+  Searches: 16,180 to 16,180
+  Avg surprise: 5.8902
+  Peak surprise: 5.8902
+  Dominant categories: Work_Career(0.6), Entertainment(0.4), Fashion(0.0)
+  Sample queries:
+    - ellen pompeo height
+
+EVENT 23:
+  Period: 2021-07-05 to 2021-07-05
+  Searches: 17,881 to 17,882
+  Avg surprise: 5.2890
+  Peak surprise: 5.2899
+  Dominant categories: Location(1.0), Entertainment(1.0), Fashion(0.0)
+  Sample queries:
+    - Viewed 12:51 By Chef James Cochran
+    - twelve fifty one
+
+EVENT 24:
+  Period: 2021-07-24 to 2021-07-24
+  Searches: 18,281 to 18,282
+  Avg surprise: 5.4833
+  Peak surprise: 5.4904
+  Dominant categories: Work_Career(1.7), Life_Transitions(0.3), Fashion(0.0)
+  Sample queries:
+    - does pension contribution reduce taxable income
+    - do pension contributions reduce your taxable income self-employed
+
+EVENT 25:
+  Period: 2022-06-16 to 2022-06-17
+  Searches: 27,590 to 27,606
+  Avg surprise: 5.8742
+  Peak surprise: 6.3439
+  Dominant categories: Technology(7.9), Work_Career(2.9), Entertainment(1.9)
+  Sample queries:
+    - ashneer grover
+    - What Causes Bumps on the Roof of the Mouth • Soundview Family ...
+    - hard lump mouth roof
+    - 12 Causes for That Bump on the Roof of Your Mouth - Healthline
+    - vsauce
+
+EVENT 26:
+  Period: 2022-07-08 to 2022-07-08
+  Searches: 28,160 to 28,160
+  Avg surprise: 5.3277
+  Peak surprise: 5.3277
+  Dominant categories: Technology(1.0), Fashion(0.0), Travel(0.0)
+  Sample queries:
+    - unit series c
+
+EVENT 27:
+  Period: 2022-10-31 to 2022-11-01
+  Searches: 31,005 to 31,012
+  Avg surprise: 5.4159
+  Peak surprise: 5.4898
+  Dominant categories: Fashion(2.4), Work_Career(1.4), Technology(1.3)
+  Sample queries:
+    - salvatore grimaldi hairdressers
+    - Salvatore Grimaldi Hairdressing | Hair Salon in Mortlake, London ...
+    - treatwell cutting crew
+    - balayage
+    - cutting crew treatwell
+
+EVENT 28:
+  Period: 2023-03-02 to 2023-03-05
+  Searches: 33,562 to 33,580
+  Avg surprise: 5.7799
+  Peak surprise: 6.0628
+  Dominant categories: Location(8.0), Travel(6.3), Work_Career(2.0)
+  Sample queries:
+    - marudhar express running time
+    - 14854 running status
+    - marudhar express 14865 running status
+    - marudhar express running time
+    - marudhar express running time 14865

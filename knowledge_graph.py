@@ -78,7 +78,7 @@ class UserKnowledgeGraph:
                                    created=timestamp,
                                    last_updated=timestamp)
                 
-                # ✅ SIMPLIFIED: Backward edge B→A
+                # Backward edge B→A
                 if self.G.has_edge(entity_B_id, entity_A_id):
                     edge_data = self.G[entity_B_id][entity_A_id]
                     current = edge_data['weight']
@@ -134,7 +134,7 @@ class UserKnowledgeGraph:
                                        edge_type="belongs_to",
                                        created=timestamp)
                     
-                    # ✅ SIMPLIFIED: Category→Entity edges
+                    # Category→Entity edges
                     if self.G.has_edge(cat, entity_id):
                         edge_data = self.G[cat][entity_id]
                         current = edge_data['weight']
@@ -156,7 +156,7 @@ class UserKnowledgeGraph:
                                        created=timestamp,
                                        last_updated=timestamp)
             
-            # ✅ SIMPLIFIED: User→Entity edges
+            # User→Entity edges
             if self.G.has_edge("USER", entity_id):
                 edge_data = self.G["USER"][entity_id]
                 current = edge_data['weight']
