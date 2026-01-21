@@ -1,9 +1,9 @@
 # Ignore specific checkpoints
-checkpoint_80
-checkpoint_81
-checkpoint_82
-checkpoint_83
-checkpoint_FINAL
+checkpoint_80.pkl
+checkpoint_81.pkl
+checkpoint_82.pkl
+checkpoint_83.pkl
+checkpoint_FINAL.pkl
 
 # If they are directories, ignore their contents too
 checkpoint_80/
