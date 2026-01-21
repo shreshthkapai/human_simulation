@@ -1,5 +1,6 @@
 """
-GPU Predictor
+GPU Predictor - FIXED VERSION
+✅ User→Category edges now decay properly
 """
 import torch
 import numpy as np
@@ -271,8 +272,9 @@ class GraphPredictorGPU:
     def apply_temporal_decay(self, current_timestamp, decay_rate=0.0005):
         """
         Apply decay to changing interests and associations
-        Track historical_peak for intelligent revival
+        ✅ FIXED: Now includes User→Category edges
         """
+        # ✅ EXPANDED: Include User→Category edges
         DECAYABLE_EDGE_TYPES = {'interested_in', 'co_occurs', 'suggests'}
         
         edges_affected = 0
@@ -283,21 +285,25 @@ class GraphPredictorGPU:
             if edge_type not in DECAYABLE_EDGE_TYPES:
                 continue
             
-            # User→Category handled by competition
-            if edge_type == 'interested_in' and u == 'USER' and v in self.kg.categories:
-                continue
+            # ✅ REMOVED: No longer skip User→Category edges
             
             last_updated = data.get('last_updated')
             if not last_updated:
                 continue
             
             days_since = (current_timestamp - last_updated).days
-            decay_factor = np.exp(-decay_rate * days_since)
+            
+            # ✅ NEW: Slower decay for User→Category (more stable)
+            if edge_type == 'interested_in' and u == 'USER':
+                effective_decay_rate = decay_rate * 0.5
+            else:
+                effective_decay_rate = decay_rate
+            
+            decay_factor = np.exp(-effective_decay_rate * days_since)
             new_weight = data['weight'] * decay_factor
             
-            # Just update weight and track peak
             if new_weight < 0.05:
-                data['weight'] = 0.01  # Low weight threshold
+                data['weight'] = 0.01
                 data['historical_peak'] = max(data.get('historical_peak', 0), data['weight'] / decay_factor)
                 edges_affected += 1
             else:
