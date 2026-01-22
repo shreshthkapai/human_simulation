@@ -63,7 +63,7 @@ Return ONLY the JSON array. No explanation."""
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
-        "format": "json", # Forces Ollama JSON mode
+        "format": "json", 
         "options": {
             "temperature": 0.1,
             "num_predict": 500
